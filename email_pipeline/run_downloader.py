@@ -20,7 +20,7 @@ def setup_logging():
         datefmt='%Y-%m-%d %H:%M:%S',
     )
 
-def main() -> 'DownloadResult':
+def main(send_failure: bool = True) -> 'DownloadResult':
     setup_logging()
     log = logging.getLogger('run_email')
 
@@ -47,9 +47,10 @@ def main() -> 'DownloadResult':
 
     # Step 2: Send failure alert if download incomplete
     log.warning(f"❌ Download incomplete: {result.error_message}")
-    notifier = EmailNotifier(smtp_user, smtp_pass)
-    if notifier.send_failure_alert(received_times=result.received_times):
-        log.info("Failure notification sent")
+    if send_failure:
+        notifier = EmailNotifier(smtp_user, smtp_pass)
+        if notifier.send_failure_alert(received_times=result.received_times):
+            log.info("Failure notification sent")
 
     return result
 

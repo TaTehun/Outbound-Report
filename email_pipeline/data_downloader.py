@@ -3,6 +3,7 @@ Downloads report attachments from a POP3 mail server.
 """
 import poplib
 import logging
+import shutil
 import pytz
 
 from email.parser import Parser
@@ -102,20 +103,20 @@ class ReportEmailDownloader:
     # ------------------------------------------------------------
     # Internal Helpers
     # ------------------------------------------------------------
+
     def _clean_data_folder(self) -> None:
-        """Create today's date folders (no cleanup needed with date-based folder structure)."""
         config.DATA_DIR.mkdir(parents=True, exist_ok=True)
         config.OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
 
-        # for f in config.DATA_DIR.iterdir():
-        #     if not f.name.startswith(config.MASTER_FILE_PREFIX):
-        #         logger.info(f"Removing old file: {f}")
-        #         f.unlink()
-
-        # for f in config.OUTPUT_DIR.iterdir():
-        #     if f.is_file():
-        #         logger.info(f"Removing old output: {f}")
-        #         f.unlink()
+        for base_dir in [config.DATA_DIR.parent, config.OUTPUT_DIR.parent]:
+            folders = sorted(
+                [f for f in base_dir.iterdir() if f.is_dir()],
+                key=lambda f: f.name,
+                reverse=True,
+            )
+            for old in folders[config.MAX_DAILY_FOLDERS:]:
+                shutil.rmtree(old)
+                logger.info(f"Removed old folder: {old}")
 
     def _search_and_download(self) -> DownloadResult:
         """Scan emails newest-first and download matching attachments."""
@@ -148,7 +149,7 @@ class ReportEmailDownloader:
                 msg = self._fetch_email(email_index)
                 email_date = parsedate_to_datetime(msg.get('Date', '')).astimezone(texas_tz)
                 logger.info(f"Match found at index {email_index} | Date: {email_date.strftime('%Y-%m-%d %H:%M %Z')} | Subject: {msg.get('Subject', '')}")
-                self._save_attachments(msg)
+                self._save_attachments(msg, email_date)
 
                 target_name = matched.get("name", str(matched["contains"]))
                 received_times[target_name] = email_date.strftime('%m/%d/%Y %H:%M CST')
@@ -194,16 +195,9 @@ class ReportEmailDownloader:
 
         try:
             email_date = parsedate_to_datetime(msg.get('Date', '')).astimezone(texas_tz).date()
-            """
-            # 오늘 날짜 이메일만 처리
-            if email_date != datetime.now(texas_tz).date():
-                return None
-            """
-            # 5일전 이메일까지 포함
             cutoff_date = (datetime.now(texas_tz) - timedelta(days=5)).date()
             if email_date < cutoff_date:
                 return None
-
         except Exception:
             pass
 
@@ -220,14 +214,14 @@ class ReportEmailDownloader:
 
         return None
 
-    def _save_attachments(self, msg) -> None:
+    def _save_attachments(self, msg, email_date) -> None:
         """Recursively find and save all attachments from an email."""
         content_type = msg.get_content_type().lower()
         # logger.info(f"Part content-type: {content_type}") - For debugging
 
         if content_type.startswith('multipart'):
             for part in msg.get_payload():
-                self._save_attachments(part)
+                self._save_attachments(part, email_date)
             return
 
         if not (content_type.startswith('application') or content_type == 'text/csv'):
@@ -236,6 +230,10 @@ class ReportEmailDownloader:
         filename = self._extract_filename(msg)
         if not filename:
             return
+
+        stem, suffix = filename.rsplit('.', 1) if '.' in filename else (filename, '')
+        timestamp = email_date.strftime('%H%M')
+        filename = f"{stem}_{timestamp}.{suffix}" if suffix else f"{stem}_{timestamp}"
 
         save_path = config.DATA_DIR / filename
         save_path.write_bytes(msg.get_payload(decode=True))

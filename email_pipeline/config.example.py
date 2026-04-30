@@ -72,6 +72,9 @@ EMAIL_TARGETS = [
 
 EXPECTED_ATTACHMENT_COUNT = len(EMAIL_TARGETS)
 
+# Max number of daily folders to keep in Data/ and Output/
+MAX_DAILY_FOLDERS = 5
+
 # ============================================================
 # Failure Alert Email
 # ============================================================

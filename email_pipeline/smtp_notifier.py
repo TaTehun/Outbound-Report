@@ -15,6 +15,7 @@ from dotenv import load_dotenv
 
 from email_pipeline import config
 from utils.date_utils import today_str
+from utils import pivot_utils
 
 logger = logging.getLogger(__name__)
 
@@ -49,7 +50,7 @@ class EmailNotifier:
 
         msgAlternative = MIMEMultipart('alternative')
         msgRoot.attach(msgAlternative)
-        msgAlternative.attach(MIMEText(body, 'html'))
+        msgAlternative.attach(MIMEText(body, 'html', 'utf-8'))
 
         if attachment_path and Path(attachment_path).exists():
             with open(attachment_path, 'rb') as f:
@@ -109,12 +110,14 @@ class EmailNotifier:
         )
 
 
-def send_email(output_file: Path, received_times: dict) -> None:
+def send_email(output_file: Path, received_times: dict, is_updated: bool = False, pivot_data: list = None) -> bool:
     """
     Send the consolidated report email with the xlsb file attached.
 
     output_file    : xlsb file path returned by combine_excel()
     received_times : {target name → CST received time} from run_downloader()
+    is_updated     : if True, prepends "(Updated) " to the subject
+    pivot_data     : pivot table data to embed as HTML table in the email body
     """
     load_dotenv(config.ENV_PATH)
     smtp_user = os.environ.get(config.SMTP_USER_ENV)
@@ -122,25 +125,24 @@ def send_email(output_file: Path, received_times: dict) -> None:
 
     if not smtp_user or not smtp_pass:
         logger.error("SMTP credentials missing — email not sent")
-        return
+        return False
 
-    lines = [
-        "Dear All,",
-        "",
-        f"Please find the consolidated Daily Outbound Report for {today_str('h')} Attached.",
-        "",
-        "Thank you",
-    ]
+    pivot_html = pivot_utils.to_html(pivot_data) if pivot_data else ""
 
     body = (
         '<BODY style="font-size:11pt;font-family:Calibri">'
-        + "<br>".join(lines)
+        + "Dear All,<br><br>"
+        + f"Please find the consolidated Daily Outbound Report for {today_str('h')} Attached.<br><br>"
+        + pivot_html
+        + "<br>Thank you"
         + "</BODY>"
     )
-    subject = config.REPORT_SUBJECT.format(today_str('e'))  # e.g. "... – 04.29.2026"
+    subject = config.REPORT_SUBJECT.format(today_str('e'))
+    if is_updated:
+        subject = "(Updated) " + subject
 
     notifier = EmailNotifier(smtp_user, smtp_pass)
-    notifier.send(
+    success = notifier.send(
         subject=subject,
         body=body,
         to=config.REPORT_TO,
@@ -148,3 +150,36 @@ def send_email(output_file: Path, received_times: dict) -> None:
         attachment_path=output_file,
     )
     logger.info(f"Attaching: {output_file} | exists: {output_file.exists()}")
+    return success
+
+def send_skip_email(downloaded_files: list) -> None:
+    """Send notification that 2nd run files matched 1st run — report not resent."""
+    load_dotenv(config.ENV_PATH)
+    smtp_user = os.environ.get(config.SMTP_USER_ENV)
+    smtp_pass = os.environ.get(config.SMTP_PASS_ENV)
+
+    if not smtp_user or not smtp_pass:
+        logger.error("SMTP credentials missing — skip email not sent")
+        return
+
+    file_names = [Path(f).name for f in downloaded_files]
+    lines = (
+        ["Dear All,", ""]
+        + ["The following files from the second run were identical to the first run.",
+           "No updated report has been sent.", ""]
+        + [f"ㆍ {name}" for name in file_names]
+        + ["", "Thank you"]
+    )
+
+    body = (
+        '<BODY style="font-size:11pt;font-family:Calibri">'
+        + "<br>".join(lines)
+        + "</BODY>"
+    )
+    notifier = EmailNotifier(smtp_user, smtp_pass)
+    notifier.send(
+        subject=f"[No Update] Consolidated Manifest – {today_str('e')}",
+        body=body,
+        to=config.NOTIFICATION_TO,
+        cc=config.NOTIFICATION_CC,
+    )

@@ -11,8 +11,9 @@ Each business day, multiple carriers and logistics partners send their outbound 
 1. **Downloads** today's report attachments from the POP3 mailbox
 2. **Transforms** each source file into a standardized format
 3. **Consolidates** all sources into a single workbook with a refreshed pivot table
-4. **Distributes** the final `.xlsb` report via SMTP
+4. **Distributes** the final `.xlsb` report via SMTP — with pivot table embedded in the email body
 5. **Alerts** stakeholders if any files were not received
+6. **Detects 2nd-run updates** — if new files arrived after the first run, re-sends with an `(Updated)` subject prefix; if nothing changed, sends a "No Update" notification instead
 
 ---
 
@@ -20,14 +21,16 @@ Each business day, multiple carriers and logistics partners send their outbound 
 
 ```
 outbound_report/
-├── main.py                        # Data processing & Excel consolidation
+├── main.py                        # Data processing, Excel consolidation & run logic
+├── run.bat                        # One-click launcher (UNC-path safe)
 ├── email_pipeline/
 │   ├── config.py                  # All settings (paths, servers, targets)
 │   ├── data_downloader.py         # POP3 attachment downloader
 │   ├── run_downloader.py          # Pipeline entry point
-│   └── smtp_notifier.py           # Email sender (report + failure alert)
+│   └── smtp_notifier.py           # Email sender (report + failure + skip alerts)
 └── utils/
-    └── date_utils.py              # Date formatting utilities
+    ├── date_utils.py              # Date formatting utilities
+    └── pivot_utils.py             # Pivot refresh (xlwings) + HTML rendering
 ```
 
 ---
@@ -65,16 +68,24 @@ Outbound/
 ## How It Works
 
 ### 1. Download
-The downloader connects to the POP3 server and scans incoming emails **newest-first**, stopping as soon as it reaches emails older than today. For each email, it checks the subject and sender against the configured targets before downloading the attachment — minimizing unnecessary data transfer.
+The downloader connects to the POP3 server and scans incoming emails **newest-first**, stopping as soon as it reaches emails older than today. For each email, it checks the subject and sender against the configured targets before downloading the attachment — minimizing unnecessary data transfer. Each saved file is timestamped (`filename_HHMM.ext`) so subsequent runs can detect whether new files arrived.
 
 ### 2. Transform
-Each source file goes through source-specific transformations (column reordering, address splitting, date formatting, blank column insertion) to conform to a standard 19-column layout.
+Each source file goes through source-specific transformations (column reordering, address splitting, date formatting, blank column insertion) to conform to a standard 19-column layout. XPO blank shipment status values are filled with `SHIPMENT EN-ROUTE-TO-DEST` so the pivot table shows a meaningful label instead of `(Blank)`.
 
 ### 3. Consolidate
-All transformed DataFrames are concatenated and written into the `Daily Manifest` sheet of the template workbook, starting at row 2 to preserve the pre-formatted header. The pivot table is then refreshed against the new data.
+All transformed DataFrames are concatenated and written into the `Daily Manifest` sheet of the template workbook, starting at row 2 to preserve the pre-formatted header. The pivot table is refreshed via `pivot_utils.read_pivot()` and the resulting data is captured before saving.
 
 ### 4. Distribute
-The final `.xlsb` file is attached to a report email and sent to the configured recipients. If any files were missing, a separate failure alert is sent detailing which files were not received and which ones were.
+The final `.xlsb` file is attached to a report email. The email body includes the refreshed pivot table rendered as an HTML table for quick in-email review. If any files were missing, a separate failure alert is sent detailing which files were not received.
+
+### 5. 2nd-Run Logic
+When the pipeline is run a second time on the same day:
+
+| Condition | Action |
+|-----------|--------|
+| New files downloaded (timestamp ≥ 19:00) | Re-consolidate and send `(Updated)` report |
+| No new files (same as 1st run) | Send "No Update" notification — report not resent |
 
 ---
 
@@ -111,9 +122,12 @@ python-dotenv
 
 ```bash
 python main.py
+# or double-click run.bat
 ```
 
 This runs the full pipeline: download → transform → consolidate → send.
+
+The pipeline handles both the 1st and 2nd daily run automatically — no flags needed.
 
 To run the downloader only:
 

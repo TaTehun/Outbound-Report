@@ -7,7 +7,8 @@ from openpyxl.utils import get_column_letter
 from utils.date_utils import today_str
 from email_pipeline import config
 from email_pipeline.run_downloader import main as run_downloader
-from email_pipeline.smtp_notifier import send_email
+from utils import pivot_utils
+from email_pipeline.smtp_notifier import send_email, send_skip_email
 
 DATA_DIR   = config.DATA_DIR
 OUTPUT_DIR = config.OUTPUT_DIR
@@ -123,6 +124,7 @@ def provider_d_report():
     col_dict = {get_column_letter(i + 1): col for i, col in enumerate(df.columns)}
 
     df = df.loc[:, :col_dict["N"]]
+    df[col_dict["K"]] = df[col_dict["K"]].fillna("SHIPMENT EN-ROUTE-TO-DEST")
 
     print("Provider D report processed")
     return df.loc[:, col_dict["A"]:col_dict["N"]]
@@ -160,17 +162,8 @@ def combine_excel():
     ws = wb.sheets["Daily Manifest"]
     ws.range("A2").value = df_result.values.tolist()
 
-    # Update pivot cache and refresh
-    pivot_sheet = wb.sheets["Pivot"]
-    for pt in pivot_sheet.api.PivotTables():
-        pt.ChangePivotCache(
-            wb.api.PivotCaches().Create(
-                SourceType=1,  # xlDatabase
-                SourceData="'Daily Manifest'!$A:$S"
-            )
-        )
-        pt.RefreshTable()
-        pt.SaveData = True  # Cache saved with file — prevents "Refresh Data" prompt on open
+    # Update pivot cache, refresh, and capture data
+    pivot_data = pivot_utils.read_pivot(wb)
 
     wb.sheets["Pivot"].activate()
     xlsb_path = str(OUTPUT_DIR / "Consolidated Daily Manifest - {}.xlsb".format(today_str('e')))
@@ -182,9 +175,23 @@ def combine_excel():
     print("Combine Completed!")
 
     print(f"Output file: {xlsb_path}")
-    return Path(xlsb_path)
+    return Path(xlsb_path), pivot_data
 
 if __name__ == "__main__":
     result = run_downloader()
-    output_file = combine_excel()
-    send_email(output_file, result.received_times)
+
+    xlsb = OUTPUT_DIR / "Consolidated Daily Manifest - {}.xlsb".format(today_str('e'))
+
+    has_after_1900 = any(
+        int(Path(f).stem.rsplit('_', 1)[-1]) >= 1900
+        for f in result.downloaded_files
+    )
+
+    if not xlsb.exists():
+        output_file, pivot_data = combine_excel()
+        send_email(output_file, result.received_times, is_updated=False, pivot_data=pivot_data)
+    elif has_after_1900:
+        output_file, pivot_data = combine_excel()
+        send_email(output_file, result.received_times, is_updated=True, pivot_data=pivot_data)
+    else:
+        send_skip_email([])

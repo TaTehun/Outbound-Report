@@ -24,7 +24,7 @@
       justify-content: space-between;
     }
     header h1 { font-size: 1.3rem; font-weight: 700; color: #1a202c; }
-    header p  { font-size: 0.82rem; color: #718096; margin-top: 3px; }
+    header p  { font-size: 0.82rem; color: #4a5568; margin-top: 3px; }
     .badge {
       background: #ebf8ff;
       color: #2b6cb0;
@@ -39,11 +39,11 @@
     main { max-width: 1100px; margin: 0 auto; padding: 40px 24px; }
     section { margin-bottom: 48px; }
     .section-label {
-      font-size: 0.7rem;
+      font-size: 0.72rem;
       font-weight: 700;
-      letter-spacing: 0.1em;
+      letter-spacing: 0.12em;
       text-transform: uppercase;
-      color: #a0aec0;
+      color: #4a5568;
       margin-bottom: 18px;
     }
 
@@ -67,7 +67,7 @@
     }
     .stat-label {
       font-size: 0.75rem;
-      color: #718096;
+      color: #4a5568;
       margin-top: 6px;
     }
 
@@ -287,6 +287,7 @@
       display: grid;
       grid-template-columns: repeat(3, 1fr);
       gap: 16px;
+      grid-template-rows: auto auto;
     }
     .feature-card {
       background: #fff;
@@ -303,7 +304,7 @@
     }
     .feature-desc {
       font-size: 0.75rem;
-      color: #718096;
+      color: #4a5568;
       line-height: 1.6;
     }
 
@@ -361,23 +362,23 @@
     <div class="stats">
       <div class="stat-card">
         <div class="stat-value">5</div>
-        <div class="stat-label">Data sources consolidated daily</div>
+        <div class="stat-label">Sources merged daily</div>
       </div>
       <div class="stat-card">
         <div class="stat-value">19</div>
-        <div class="stat-label">Standardized output columns</div>
+        <div class="stat-label">Standardized columns</div>
       </div>
       <div class="stat-card">
         <div class="stat-value">0</div>
-        <div class="stat-label">Manual steps required</div>
+        <div class="stat-label">Manual steps</div>
       </div>
       <div class="stat-card">
         <div class="stat-value">.xlsb</div>
-        <div class="stat-label">Output with live pivot table</div>
+        <div class="stat-label">Output + live pivot</div>
       </div>
       <div class="stat-card">
         <div class="stat-value">45<span style="font-size:1rem;font-weight:600"> min</span></div>
-        <div class="stat-label">of daily manual work automated, everyday</div>
+        <div class="stat-label">Daily manual work eliminated</div>
       </div>
     </div>
   </section>
@@ -392,7 +393,7 @@
 
       <div class="fc-box process">
         Connect to POP3 Mailbox
-        <span class="fc-label">scan newest-first, stop at yesterday</span>
+        <span class="fc-label">newest-first · stop at yesterday</span>
       </div>
       <div class="fc-arrow-down"></div>
 
@@ -424,7 +425,7 @@
         </div>
 
         <!-- YES branch — right -->
-        <div style="display:flex; flex-direction:column; align-items:center; width: 240px;">
+        <div style="display:flex; flex-direction:column; align-items:center; width: 300px;">
           <div style="display:flex; align-items:center;">
             <span class="fc-branch-label">Yes</span>
             <div class="fc-arrow-right"></div>
@@ -435,7 +436,7 @@
           </div>
           <div class="fc-box process" style="margin-top:0;">
             Transform Each Source
-            <span class="fc-label">reorder · split · format</span>
+            <span class="fc-label">reorder · split · format · fill blanks</span>
           </div>
           <div class="fc-arrow-down"></div>
           <div class="fc-box process">
@@ -443,10 +444,87 @@
             <span class="fc-label">write to template → .xlsb</span>
           </div>
           <div class="fc-arrow-down"></div>
-          <div class="fc-box end-success">📧 Send Report Email<span class="fc-label">xlsb attached</span></div>
+          <div class="fc-box decision">
+            .xlsb already exists?
+          </div>
+          <div style="display:flex; gap: 24px; margin-top: 0; align-items: flex-start;">
+            <!-- No = first run -->
+            <div style="display:flex; flex-direction:column; align-items:center; width:130px;">
+              <div style="display:flex; align-items:center;">
+                <div class="fc-arrow-left"></div>
+                <span class="fc-branch-label">No</span>
+              </div>
+              <div class="fc-box end-success" style="margin-top:10px;">📧 Send Report<span class="fc-label">pivot table in body</span></div>
+            </div>
+            <!-- Yes = check for new files -->
+            <div style="display:flex; flex-direction:column; align-items:center; width:130px;">
+              <div style="display:flex; align-items:center;">
+                <span class="fc-branch-label">Yes</span>
+                <div class="fc-arrow-right"></div>
+              </div>
+              <div class="fc-box decision" style="margin-top:10px; min-width:120px;">
+                New files?
+                <span class="fc-label">timestamp ≥ 1900</span>
+              </div>
+              <div style="display:flex; gap:12px; margin-top:0; align-items:flex-start;">
+                <div style="display:flex; flex-direction:column; align-items:center; width:100px;">
+                  <div style="display:flex; align-items:center;">
+                    <div class="fc-arrow-left" style="width:24px;"></div>
+                    <span class="fc-branch-label">Yes</span>
+                  </div>
+                  <div class="fc-box end-success" style="margin-top:10px; min-width:100px;">📧 (Updated)<span class="fc-label">re-send report</span></div>
+                </div>
+                <div style="display:flex; flex-direction:column; align-items:center; width:100px;">
+                  <div style="display:flex; align-items:center;">
+                    <span class="fc-branch-label">No</span>
+                    <div class="fc-arrow-right" style="width:24px;"></div>
+                  </div>
+                  <div class="fc-box end-alert" style="margin-top:10px; min-width:100px;">📧 No Update<span class="fc-label">skip notification</span></div>
+                </div>
+              </div>
+            </div>
+          </div>
         </div>
 
       </div>
+    </div>
+  </section>
+
+  <!-- Error Handling -->
+  <section>
+    <p class="section-label">Error Handling</p>
+    <div style="display:grid; grid-template-columns: repeat(3,1fr); gap:16px;">
+
+      <div style="background:#fff; border:1px solid #e2e8f0; border-radius:10px; padding:20px; border-left:4px solid #fc8181;">
+        <div style="font-size:0.82rem; font-weight:700; color:#1a202c; margin-bottom:6px;">POP3 Connection Failure</div>
+        <div style="font-size:0.74rem; color:#4a5568; line-height:1.6;">Returns <code>DownloadResult(success=False)</code> — pipeline continues with partial files already downloaded.</div>
+      </div>
+
+      <div style="background:#fff; border:1px solid #e2e8f0; border-radius:10px; padding:20px; border-left:4px solid #f6ad55;">
+        <div style="font-size:0.82rem; font-weight:700; color:#1a202c; margin-bottom:6px;">Missing Source File</div>
+        <div style="font-size:0.74rem; color:#4a5568; line-height:1.6;">Source-level <code>FileNotFoundError</code> → skip &amp; continue. Only raises <code>RuntimeError</code> if all sources are missing.</div>
+      </div>
+
+      <div style="background:#fff; border:1px solid #e2e8f0; border-radius:10px; padding:20px; border-left:4px solid #68d391;">
+        <div style="font-size:0.82rem; font-weight:700; color:#1a202c; margin-bottom:6px;">Email Send Failure</div>
+        <div style="font-size:0.74rem; color:#4a5568; line-height:1.6;">Missing credentials or SMTP error → logged with full traceback, returns <code>False</code>. No crash.</div>
+      </div>
+
+      <div style="background:#fff; border:1px solid #e2e8f0; border-radius:10px; padding:20px; border-left:4px solid #90cdf4;">
+        <div style="font-size:0.82rem; font-weight:700; color:#1a202c; margin-bottom:6px;">Bad Email Date Header</div>
+        <div style="font-size:0.74rem; color:#4a5568; line-height:1.6;">Unparseable <code>Date</code> header → silently skipped. Scan continues to the next message.</div>
+      </div>
+
+      <div style="background:#fff; border:1px solid #e2e8f0; border-radius:10px; padding:20px; border-left:4px solid #b794f4;">
+        <div style="font-size:0.82rem; font-weight:700; color:#1a202c; margin-bottom:6px;">POP3 Quit Error</div>
+        <div style="font-size:0.74rem; color:#4a5568; line-height:1.6;">Close failure → warning logged. Connection cleared in <code>finally</code> — no resource leak.</div>
+      </div>
+
+      <div style="background:#fff; border:1px solid #e2e8f0; border-radius:10px; padding:20px; border-left:4px solid #fbd38d;">
+        <div style="font-size:0.82rem; font-weight:700; color:#1a202c; margin-bottom:6px;">Partial Download</div>
+        <div style="font-size:0.74rem; color:#4a5568; line-height:1.6;">Returns <code>success=False</code> with partial <code>received_times</code> — failure alert accurately lists what arrived and what didn't.</div>
+      </div>
+
     </div>
   </section>
 
@@ -483,15 +561,27 @@
     <div class="features">
       <div class="feature-card">
         <div class="feature-title">Early Termination</div>
-        <div class="feature-desc">Email scanning stops the moment all expected files are found, or when it reaches emails older than today — no unnecessary POP3 round-trips.</div>
+        <div class="feature-desc">Stops scanning the moment all files are found, or when it hits emails older than today.</div>
       </div>
       <div class="feature-card">
         <div class="feature-title">Fault-Tolerant Consolidation</div>
-        <div class="feature-desc">Missing files don't break the run. Each source is loaded independently, and the pipeline consolidates whatever was received — then reports exactly what wasn't.</div>
+        <div class="feature-desc">Missing source → skipped. Pipeline consolidates whatever arrived and reports what didn't.</div>
       </div>
       <div class="feature-card">
         <div class="feature-title">Template-Driven Output</div>
-        <div class="feature-desc">Data is injected into a pre-built Excel template rather than generated from scratch, preserving column colors, freeze panes, filters, and pivot structure across every run.</div>
+        <div class="feature-desc">Data injected into a pre-built template — colors, freeze panes, filters, and pivot structure preserved every run.</div>
+      </div>
+      <div class="feature-card">
+        <div class="feature-title">2nd-Run Detection</div>
+        <div class="feature-desc">Files saved with HHMM timestamp. Re-run checks for new files (≥ 19:00) → Updated report or No-Update notice.</div>
+      </div>
+      <div class="feature-card">
+        <div class="feature-title">Pivot Table in Email</div>
+        <div class="feature-desc">Pivot data captured after refresh and embedded as HTML table in the email body.</div>
+      </div>
+      <div class="feature-card">
+        <div class="feature-title">Modular Pivot Utils</div>
+        <div class="feature-desc"><code>pivot_utils.py</code> — pivot refresh (xlwings) + HTML rendering in one place.</div>
       </div>
     </div>
   </section>
@@ -507,6 +597,7 @@
       <div class="tech-pill">poplib / smtplib <span class="lang">email I/O</span></div>
       <div class="tech-pill">pytz <span class="lang">timezone handling</span></div>
       <div class="tech-pill">python-dotenv <span class="lang">credential management</span></div>
+      <div class="tech-pill">pivot_utils <span class="lang">pivot refresh + HTML render</span></div>
     </div>
   </section>
 
