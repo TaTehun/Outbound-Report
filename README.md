@@ -1,3 +1,6 @@
+## Pipeline Overview
+[View Pipeline Overview →](https://username.github.io/GCPA_Outbound_Report/dashboard.html)
+
 # Daily Outbound Report — Automation Pipeline
 
 An end-to-end Python automation pipeline that downloads daily outbound report attachments from email, consolidates them into a single Excel workbook, and distributes the final report via email — all without manual intervention.
