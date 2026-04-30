@@ -1,5 +1,5 @@
 ## Pipeline Overview
-[View Pipeline Overview ](https://tatehun.github.io/Outbound-Report/Pipeline-Overview.html)
+[View Pipeline Overview](https://tatehun.github.io/Outbound-Report/Pipeline-Overview.html)
 
 # Daily Outbound Report — Automation Pipeline
 
