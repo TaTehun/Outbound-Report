@@ -1,9 +1,8 @@
-## Pipeline Overview
-[View Pipeline Overview](https://tatehun.github.io/Outbound-Report/Pipeline-Overview.html)
-
 # Daily Outbound Report — Automation Pipeline
 
 An end-to-end Python automation pipeline that downloads daily outbound report attachments from email, consolidates them into a single Excel workbook, and distributes the final report via email — all without manual intervention.
+
+> **Visual overview:** [project-overview.html](project-overview.html)
 
 ---
 
@@ -16,7 +15,7 @@ Each business day, multiple carriers and logistics partners send their outbound 
 3. **Consolidates** all sources into a single workbook with a refreshed pivot table
 4. **Distributes** the final `.xlsb` report via SMTP — with pivot table embedded in the email body
 5. **Alerts** stakeholders if any files were not received
-6. **Detects 2nd-run updates** — if new files arrived after the first run, re-sends with an `(Updated)` subject prefix; if nothing changed, sends a "No Update" notification instead
+6. **Detects updates** — runs up to 3 times per day; if new files arrived since the last run, re-sends with an `(Updated)` subject prefix; if nothing changed, sends a "No Update" notification instead
 
 ---
 
@@ -25,12 +24,15 @@ Each business day, multiple carriers and logistics partners send their outbound 
 ```
 outbound_report/
 ├── main.py                        # Data processing, Excel consolidation & run logic
-├── run.bat                        # One-click launcher (UNC-path safe)
+├── main.example.py                # Simplified reference version of main.py
+├── project-overview.html          # Visual project overview (portfolio)
+├── run_initial.bat                # 1st daily run (17:00)
+├── run_second.bat                 # 2nd daily run (18:00)
+├── run_third.bat                  # 3rd daily run (19:00)
 ├── email_pipeline/
-│   ├── config.py                  # All settings (paths, servers, targets)
-│   ├── data_downloader.py         # POP3 attachment downloader
-│   ├── run_downloader.py          # Pipeline entry point
-│   └── smtp_notifier.py           # Email sender (report + failure + skip alerts)
+│   ├── email_setup.py             # All settings (paths, servers, targets, recipients)
+│   ├── downloader.py              # POP3 attachment downloader
+│   └── sender.py                  # Email sender (report + failure + skip alerts)
 └── utils/
     ├── date_utils.py              # Date formatting utilities
     └── pivot_utils.py             # Pivot refresh (xlwings) + HTML rendering
@@ -42,11 +44,11 @@ outbound_report/
 
 | Source | Description |
 |--------|-------------|
-| Provider A | Daily exception list (Excel) |
-| Provider B | Daily exception list (Excel) |
-| Provider C | Outbound tracking report (Excel) |
-| Provider D | Daily outbound report (CSV) |
-| Provider E | Daily manifest report (Excel) |
+| Carrier A | IOD outbound report (Excel) |
+| Carrier B | LTL daily exception list (Excel) |
+| Carrier B | Milk Run daily exception list (Excel) |
+| Carrier C | Daily manifest report (Excel) |
+| Carrier D | Daily manifest report (CSV) |
 
 > If a file is not received on a given day, that source is skipped and the remaining files are still consolidated.
 
@@ -60,10 +62,10 @@ All files are organized into date-stamped folders:
 Outbound/
 ├── Data/
 │   ├── template.xlsx              # Master template (column headers, pivot, formatting)
-│   └── 04-29-2026/                # Today's downloaded attachments
+│   └── 05-07-2026/                # Today's downloaded attachments
 └── Output/
-    └── 04-29-2026/
-        └── Consolidated Daily Manifest - 04.29.2026.xlsb
+    └── 05-07-2026/
+        └── Consolidated Daily Manifest - 05.07.2026.xlsb
 ```
 
 ---
@@ -74,7 +76,7 @@ Outbound/
 The downloader connects to the POP3 server and scans incoming emails **newest-first**, stopping as soon as it reaches emails older than today. For each email, it checks the subject and sender against the configured targets before downloading the attachment — minimizing unnecessary data transfer. Each saved file is timestamped (`filename_HHMM.ext`) so subsequent runs can detect whether new files arrived.
 
 ### 2. Transform
-Each source file goes through source-specific transformations (column reordering, address splitting, date formatting, blank column insertion) to conform to a standard 19-column layout. XPO blank shipment status values are filled with `SHIPMENT EN-ROUTE-TO-DEST` so the pivot table shows a meaningful label instead of `(Blank)`.
+Each source file goes through source-specific transformations (column reordering, address splitting, date formatting, blank column insertion) to conform to a standard 19-column layout. Blank shipment status values are filled with `SHIPMENT EN-ROUTE-TO-DEST` so the pivot table shows a meaningful label instead of `(Blank)`.
 
 ### 3. Consolidate
 All transformed DataFrames are concatenated and written into the `Daily Manifest` sheet of the template workbook, starting at row 2 to preserve the pre-formatted header. The pivot table is refreshed via `pivot_utils.read_pivot()` and the resulting data is captured before saving.
@@ -82,19 +84,22 @@ All transformed DataFrames are concatenated and written into the `Daily Manifest
 ### 4. Distribute
 The final `.xlsb` file is attached to a report email. The email body includes the refreshed pivot table rendered as an HTML table for quick in-email review. If any files were missing, a separate failure alert is sent detailing which files were not received.
 
-### 5. 2nd-Run Logic
-When the pipeline is run a second time on the same day:
+### 5. Multi-Run Logic
+The pipeline runs up to 3 times per day via separate bat files. Each subsequent run checks whether new files arrived since the previous run using the file timestamp (`_HHMM`) embedded in the filename:
 
-| Condition | Action |
-|-----------|--------|
-| New files downloaded (timestamp ≥ 19:00) | Re-consolidate and send `(Updated)` report |
-| No new files (same as 1st run) | Send "No Update" notification — report not resent |
+| Run | Bat file | Condition | Action |
+|-----|----------|-----------|--------|
+| 1st | `run_initial.bat` | Output file doesn't exist | Consolidate and send report |
+| 2nd | `run_second.bat` | Files with timestamp ≥ 17:00 exist | Re-consolidate and send `(Updated)` report |
+| 2nd | `run_second.bat` | No new files | Send "No Update" notification |
+| 3rd | `run_third.bat` | Files with timestamp ≥ 18:00 exist | Re-consolidate and send `(Updated)` report |
+| 3rd | `run_third.bat` | No new files | Send "No Update" notification |
 
 ---
 
 ## Configuration
 
-All settings are managed in `email_pipeline/config.py`:
+All settings are managed in `email_pipeline/email_setup.py`:
 
 | Setting | Description |
 |---------|-------------|
@@ -124,16 +129,35 @@ python-dotenv
 ## Running
 
 ```bash
-python main.py
-# or double-click run.bat
+# 1st run (17:00)
+python main.py initial
+# or double-click run_initial.bat
+
+# 2nd run (18:00)
+python main.py second
+# or double-click run_second.bat
+
+# 3rd run (19:00)
+python main.py third
+# or double-click run_third.bat
 ```
 
-This runs the full pipeline: download → transform → consolidate → send.
+---
 
-The pipeline handles both the 1st and 2nd daily run automatically — no flags needed.
+## Changelog
 
-To run the downloader only:
+### v1.3 — 2026-05-07 · Multi-Run Schedule & Module Split
+- 3-run daily schedule with stateless update detection (`_HHMM` suffix)
+- `email_pipeline` split into `downloader.py` / `sender.py` / `email_setup.py`
+- Fault-tolerant source dispatch — alert and report paths fully decoupled
+- Added `project-overview.html`
 
-```bash
-python -m email_pipeline.run_downloader
-```
+### v1.2 — 2026-04-XX · Email Pipeline Refactor
+- Restructured `email_pipeline` into `email_setup.py`, `downloader.py`, `sender.py`
+
+### v1.1 — 2026-04-XX · 2nd-Run Detection & Pivot Email
+- 2nd-run update detection via `_HHMM` filename timestamp
+- Pivot table rendered as inline HTML in email body
+
+### v1.0 — Initial Release
+- POP3 downloader, multi-source Excel consolidation, SMTP distribution

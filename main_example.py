@@ -1,3 +1,4 @@
+import sys
 import pandas as pd
 import shutil
 import xlwings as xw
@@ -5,10 +6,10 @@ import xlwings as xw
 from pathlib import Path
 from openpyxl.utils import get_column_letter
 from utils.date_utils import today_str
-from email_pipeline import config
-from email_pipeline.run_downloader import main as run_downloader
+from email_pipeline import email_setup as config
 from utils import pivot_utils
-from email_pipeline.smtp_notifier import send_email, send_skip_email
+from email_pipeline.downloader import EmailDownloader
+from email_pipeline.sender import load_sender, send_report, send_skip
 
 DATA_DIR   = config.DATA_DIR
 OUTPUT_DIR = config.OUTPUT_DIR
@@ -178,20 +179,35 @@ def combine_excel():
     return Path(xlsb_path), pivot_data
 
 if __name__ == "__main__":
-    result = run_downloader()
+    import os
+    from dotenv import load_dotenv
+    load_dotenv(config.ENV_PATH)
 
-    xlsb = OUTPUT_DIR / "Consolidated Daily Manifest - {}.xlsb".format(today_str('e'))
+    pop3_user = os.environ.get(config.POP3_USER_ENV)
+    pop3_pass = os.environ.get(config.POP3_PASS_ENV)
+    result = EmailDownloader(pop3_user, pop3_pass).download()
 
-    has_after_1900 = any(
-        int(Path(f).stem.rsplit('_', 1)[-1]) >= 1900
+    sender = load_sender()
+    xlsb = OUTPUT_DIR / config.ATTACHMENT_FILENAME.format(today_str('e'))
+    mode = sys.argv[1] if len(sys.argv) > 1 else "initial"
+
+    has_after_1700 = any(
+        int(Path(f).stem.rsplit('_', 1)[-1]) >= 1700
+        for f in result.downloaded_files
+    )
+    has_after_1800 = any(
+        int(Path(f).stem.rsplit('_', 1)[-1]) >= 1800
         for f in result.downloaded_files
     )
 
     if not xlsb.exists():
         output_file, pivot_data = combine_excel()
-        send_email(output_file, result.received_times, is_updated=False, pivot_data=pivot_data)
-    elif has_after_1900:
+        send_report(sender, output_file, result.received_times, is_updated=False, pivot_data=pivot_data)
+    elif mode == "second" and has_after_1700:
         output_file, pivot_data = combine_excel()
-        send_email(output_file, result.received_times, is_updated=True, pivot_data=pivot_data)
+        send_report(sender, output_file, result.received_times, is_updated=True, pivot_data=pivot_data)
+    elif mode == "third" and has_after_1800:
+        output_file, pivot_data = combine_excel()
+        send_report(sender, output_file, result.received_times, is_updated=True, pivot_data=pivot_data)
     else:
-        send_skip_email([])
+        send_skip(sender, result.downloaded_files)
