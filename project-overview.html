@@ -5,868 +5,1084 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>Daily Outbound Report — Portfolio</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@500;600;700&family=Inter:wght@500;600;700&display=swap" rel="stylesheet">
   <style>
-    * { box-sizing: border-box; margin: 0; padding: 0; }
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
-    /* ── 컬러 팔레트 ──
-       배경 레이어:  #080b10 (최하) → #0f1318 (페이지) → #1c2230 (카드)
-       테두리:       #404858 (기본) · #505a6e (강조)
-       텍스트:       #e6edf3 (주) · #c8d4e0 (보조) · #a0adb8 (3차)
-       액센트:       #4ade80 (그린) · #60a5fa (블루) · #f87171 (레드)
-    */
-
-    body {
-      font-family: 'Inter', 'Segoe UI', system-ui, sans-serif;
-      background: #0f1318;
-      color: #e6edf3;
-      min-height: 100vh;
+    :root {
+      --bg-deep:    #080b10;
+      --bg-page:    #0f1318;
+      --bg-card:    #1c2230;
+      --bg-input:   #131720;
+      --border:     #404858;
+      --border-hi:  #505a6e;
+      --text-1:     #e6edf3;
+      --text-2:     #c8d4e0;
+      --text-3:     #a0adb8;
+      --green:      #4ade80;
+      --blue:       #60a5fa;
+      --red:        #f87171;
+      --yellow:     #fbbf24;
+      --purple:     #a78bfa;
+      --orange:     #fb923c;
     }
 
+    html { scroll-behavior: smooth; }
+
+    body {
+      font-family: 'Inter', system-ui, sans-serif;
+      background: var(--bg-page);
+      color: var(--text-1);
+      min-height: 100vh;
+      overflow-x: hidden;
+    }
+
+    /* ── Scanline texture overlay ── */
+    body::before {
+      content: '';
+      position: fixed;
+      inset: 0;
+      background-image: repeating-linear-gradient(
+        0deg,
+        transparent,
+        transparent 2px,
+        rgba(0,0,0,0.03) 2px,
+        rgba(0,0,0,0.03) 4px
+      );
+      pointer-events: none;
+      z-index: 9999;
+    }
+
+    /* ── Animations ── */
+    @keyframes blink     { 50% { opacity: 0; } }
+    @keyframes fade-up   { from { opacity:0; transform:translateY(14px); } to { opacity:1; transform:translateY(0); } }
+    @keyframes fade-in   { from { opacity:0; } to { opacity:1; } }
+    @keyframes pulse-dot { 0%,100% { box-shadow: 0 0 0 0 rgba(74,222,128,.4); } 60% { box-shadow: 0 0 0 6px rgba(74,222,128,0); } }
+    @keyframes slide-in  { from { opacity:0; transform:translateX(-8px); } to { opacity:1; transform:translateX(0); } }
+    @keyframes count-bar { from { width:0; } to { width: var(--w); } }
+
+    .anim-fade-up  { animation: fade-up  .5s ease both; }
+    .anim-fade-in  { animation: fade-in  .4s ease both; }
+    .d1 { animation-delay: .05s; }
+    .d2 { animation-delay: .12s; }
+    .d3 { animation-delay: .19s; }
+    .d4 { animation-delay: .26s; }
+    .d5 { animation-delay: .33s; }
+    .d6 { animation-delay: .40s; }
+
     /* ── Header ── */
-    .hdr-dark {
-      background: #080b10;
-      border-bottom: 2px solid #404858;
-      padding: 22px 48px;
+    .hdr {
+      background: var(--bg-deep);
+      border-bottom: 1px solid var(--border);
+      padding: 0 48px;
       display: flex;
-      align-items: center;
+      align-items: stretch;
       justify-content: space-between;
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      min-height: 72px;
+    }
+    .hdr::after {
+      content: '';
+      position: absolute;
+      bottom: -1px; left: 0; right: 0;
+      height: 1px;
+      background: linear-gradient(90deg, transparent, var(--green) 20%, var(--blue) 60%, transparent);
+      opacity: 0.35;
+    }
+    .hdr-left {
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      gap: 3px;
     }
     .hdr-prompt {
       font-family: 'JetBrains Mono', monospace;
-      font-size: 0.72rem;
+      font-size: 0.68rem;
       font-weight: 600;
-      color: #4ade80;
-      display: block;
-      margin-bottom: 5px;
+      color: var(--green);
+      opacity: 0.8;
     }
     .hdr-title {
       font-family: 'JetBrains Mono', monospace;
-      font-size: 1.25rem;
+      font-size: 1.15rem;
       font-weight: 700;
-      color: #f0f6fc;
+      color: var(--text-1);
       letter-spacing: -0.02em;
     }
     .hdr-cursor {
-      color: #4ade80;
+      color: var(--green);
       animation: blink 1.1s step-end infinite;
     }
-    @keyframes blink { 50% { opacity: 0; } }
     .hdr-sub {
       font-family: 'JetBrains Mono', monospace;
-      font-size: 0.75rem;
+      font-size: 0.7rem;
       font-weight: 500;
-      color: #c8d4e0;
-      margin-top: 6px;
+      color: var(--text-3);
+      letter-spacing: 0.01em;
     }
-    .hdr-right { display: flex; align-items: center; gap: 8px; }
+    .hdr-right {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
     .hdr-pill {
       font-family: 'JetBrains Mono', monospace;
-      font-size: 0.7rem;
-      padding: 5px 12px;
+      font-size: 0.68rem;
       font-weight: 700;
+      padding: 5px 12px;
+      letter-spacing: 0.04em;
     }
-    .hdr-green { color: #4ade80; border: 1px solid #4ade8066; background: #4ade8018; }
-    .hdr-dim   { color: #c8d4e0; border: 1px solid #404858;   background: #1c2230; }
+    .pill-green {
+      color: var(--green);
+      border: 1px solid rgba(74,222,128,.3);
+      background: rgba(74,222,128,.07);
+    }
+    .pill-green .dot {
+      display: inline-block;
+      width: 6px; height: 6px;
+      background: var(--green);
+      border-radius: 50%;
+      margin-right: 6px;
+      vertical-align: middle;
+      animation: pulse-dot 2s ease infinite;
+    }
+    .pill-dim {
+      color: var(--text-2);
+      border: 1px solid var(--border);
+      background: var(--bg-card);
+    }
 
     /* ── Tabs ── */
-    .tabs-dark {
-      background: #080b10;
-      border-bottom: 2px solid #404858;
-      padding: 0 32px;
+    .tabs-wrap {
+      background: var(--bg-deep);
+      border-bottom: 1px solid var(--border);
+      padding: 0 40px;
       display: flex;
-      gap: 2px;
+      gap: 0;
+      position: sticky;
+      top: 72px;
+      z-index: 99;
     }
-    .tabs-dark .tab {
-      color: #a0adb8;
+    .tab {
+      color: var(--text-3);
       font-family: 'JetBrains Mono', monospace;
-      font-size: 0.83rem;
-      font-weight: 600;
-      letter-spacing: 0.03em;
-      padding: 16px 28px;
+      font-size: 0.78rem;
+      font-weight: 700;
+      letter-spacing: 0.04em;
+      padding: 14px 24px;
       cursor: pointer;
-      border-bottom: 3px solid transparent;
-      transition: color 0.15s, background 0.15s, border-color 0.15s;
+      border-bottom: 2px solid transparent;
+      transition: color .2s, border-color .2s, background .2s;
       user-select: none;
+      position: relative;
     }
-    .tabs-dark .tab:hover {
-      color: #e6edf3;
-      background: #0f1318;
+    .tab:hover { color: var(--text-1); background: rgba(255,255,255,.02); }
+    .tab.active {
+      color: var(--text-1);
+      border-bottom-color: var(--green);
+      background: rgba(74,222,128,.04);
     }
-    .tabs-dark .tab.active {
-      color: #f0f6fc;
-      background: #1c2230;
-      border-bottom-color: #4ade80;
+    .tab-num {
+      color: var(--green);
+      margin-right: 9px;
+      font-size: 0.65rem;
+      opacity: .7;
     }
-    .tab-idx {
-      color: #4ade80;
-      margin-right: 10px;
-      font-size: 0.7rem;
-    }
+    .tab.active .tab-num { opacity: 1; }
 
     /* ── Pages ── */
-    .page { display: none; background: #0f1318; min-height: calc(100vh - 124px); }
+    .page { display: none; background: var(--bg-page); }
     .page.active { display: block; }
-    .page-inner { max-width: 1100px; margin: 0 auto; padding: 40px 24px; }
+    .page-inner {
+      max-width: 1100px;
+      margin: 0 auto;
+      padding: 40px 28px 60px;
+    }
 
     /* ── Section labels ── */
-    .dk-label {
+    .sec-label {
       font-family: 'JetBrains Mono', monospace;
-      font-size: 0.72rem;
+      font-size: 0.68rem;
       font-weight: 700;
-      color: #4ade80;
-      margin-bottom: 16px;
-      letter-spacing: 0.06em;
+      color: var(--green);
+      letter-spacing: 0.1em;
+      margin-bottom: 18px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
     }
-    .dk-section { margin-bottom: 48px; }
+    .sec-label::after {
+      content: '';
+      flex: 1;
+      height: 1px;
+      background: linear-gradient(90deg, var(--border), transparent);
+      max-width: 180px;
+    }
+    .sec { margin-bottom: 52px; }
 
     /* ── Metrics ── */
-    .dk-metrics {
+    .metrics-row {
       display: grid;
       grid-template-columns: repeat(5, 1fr);
-      gap: 12px;
+      gap: 10px;
     }
-    .dk-metric {
-      background: #1c2230;
-      border: 1px solid #404858;
-      border-top: 2px solid #4ade8055;
-      padding: 20px 18px;
+    .metric {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-top: 2px solid transparent;
+      padding: 20px 16px 18px;
+      position: relative;
+      overflow: hidden;
+      transition: border-color .2s, transform .2s;
     }
-    .dk-metric-val {
+    .metric::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: linear-gradient(135deg, rgba(96,165,250,.04) 0%, transparent 60%);
+      pointer-events: none;
+    }
+    .metric:hover { transform: translateY(-2px); border-color: var(--border-hi); }
+    .metric.m-blue  { border-top-color: var(--blue); }
+    .metric.m-green { border-top-color: var(--green); }
+    .metric.m-red   { border-top-color: var(--red); }
+    .metric.m-yellow{ border-top-color: var(--yellow); }
+    .metric.m-purple{ border-top-color: var(--purple); }
+    .metric-val {
       font-family: 'JetBrains Mono', monospace;
-      font-size: 1.9rem;
+      font-size: 2rem;
       font-weight: 700;
-      color: #60a5fa;
       line-height: 1;
+      color: var(--text-1);
     }
-    .dk-metric-key {
+    .m-blue .metric-val  { color: var(--blue); }
+    .m-green .metric-val { color: var(--green); }
+    .m-red .metric-val   { color: var(--red); }
+    .m-yellow .metric-val{ color: var(--yellow); }
+    .m-purple .metric-val{ color: var(--purple); }
+    .metric-key {
       font-family: 'JetBrains Mono', monospace;
-      font-size: 0.66rem;
-      font-weight: 600;
-      color: #c8d4e0;
-      margin-top: 9px;
+      font-size: 0.62rem;
+      font-weight: 700;
+      color: var(--text-3);
+      margin-top: 10px;
+      letter-spacing: 0.04em;
     }
-    .dk-metric-sub {
-      font-family: 'Inter', sans-serif;
-      font-size: 0.68rem;
+    .metric-sub {
+      font-size: 0.67rem;
       font-weight: 500;
-      color: #c8d4e0;
-      margin-top: 4px;
+      color: var(--text-2);
+      margin-top: 3px;
     }
 
     /* ── IO section ── */
-    .dk-io {
-      display: flex;
-      align-items: center;
-      gap: 16px;
-    }
-    .dk-sources {
-      flex: 1;
-      display: flex;
-      flex-direction: column;
-      gap: 6px;
-    }
-    .dk-source-row {
-      background: #1c2230;
-      border: 1px solid #404858;
-      padding: 11px 16px;
+    .io-wrap { display: flex; align-items: center; gap: 16px; }
+    .sources-col { flex: 1; display: flex; flex-direction: column; gap: 5px; }
+    .src-row {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-left: 2px solid transparent;
+      padding: 10px 16px;
       display: flex;
       align-items: center;
       gap: 14px;
       font-family: 'JetBrains Mono', monospace;
-      font-size: 0.73rem;
-      transition: border-color 0.15s, background 0.15s;
+      font-size: 0.72rem;
+      transition: border-color .15s, background .15s;
     }
-    .dk-source-row:hover { border-color: #4ade8055; background: #1a2030; }
-    .dk-src-carrier { color: #f87171; font-weight: 700; min-width: 38px; }
-    .dk-src-name { color: #e6edf3; flex: 1; font-weight: 500; }
-    .dk-src-type {
-      font-family: 'JetBrains Mono', monospace;
-      color: #c8d4e0;
-      font-size: 0.65rem;
-      background: #080b10;
-      border: 1px solid #404858;
+    .src-row:hover { border-left-color: var(--red); background: #1a1f2c; }
+    .src-carrier { color: var(--red); font-weight: 700; min-width: 36px; }
+    .src-name    { color: var(--text-1); flex: 1; font-size: 0.7rem; font-weight: 600; font-family: 'Inter', sans-serif; }
+    .src-ext {
+      color: var(--text-2);
+      font-size: 0.64rem;
+      font-weight: 700;
+      background: var(--bg-deep);
+      border: 1px solid var(--border);
       padding: 2px 8px;
     }
-    .dk-src-status {
+    .src-badge {
+      font-size: 0.6rem;
+      font-weight: 700;
+      padding: 2px 8px;
+      background: rgba(74,222,128,.08);
+      color: var(--green);
+      border: 1px solid rgba(74,222,128,.3);
+      letter-spacing: 0.04em;
+    }
+    .io-arrow {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 6px;
+      padding: 0 8px;
+      flex-shrink: 0;
+    }
+    .arrow-shaft {
+      width: 2px;
+      height: 44px;
+      background: linear-gradient(180deg, var(--border), var(--blue));
+      position: relative;
+    }
+    .arrow-shaft::after {
+      content: '';
+      position: absolute;
+      bottom: -5px; left: 50%;
+      transform: translateX(-50%);
+      border-left: 5px solid transparent;
+      border-right: 5px solid transparent;
+      border-top: 6px solid var(--blue);
+    }
+    .arrow-label {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.6rem;
+      font-weight: 700;
+      color: var(--blue);
+      text-align: center;
+      line-height: 1.5;
+      letter-spacing: 0.04em;
+    }
+    .output-card {
+      flex: 1;
+      background: var(--bg-card);
+      border: 1px solid rgba(96,165,250,.25);
+      border-top: 2px solid var(--blue);
+      padding: 20px;
+    }
+    .output-title {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.72rem;
+      font-weight: 700;
+      color: var(--blue);
+      margin-bottom: 16px;
+    }
+    .out-row {
+      display: flex;
+      gap: 12px;
+      margin-bottom: 9px;
+      font-size: 0.71rem;
+      align-items: baseline;
+    }
+    .out-key {
+      font-family: 'JetBrains Mono', monospace;
+      font-weight: 700;
+      color: var(--text-3);
+      min-width: 62px;
+      font-size: 0.64rem;
+    }
+    .out-val {
+      font-weight: 600;
+      color: var(--text-1);
+    }
+
+    /* ── Feature cards ── */
+    .feat-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 10px;
+    }
+    .feat-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-left: 3px solid var(--blue);
+      padding: 20px;
+      transition: transform .2s, border-color .2s;
+    }
+    .feat-card:hover { transform: translateY(-2px); border-color: rgba(96,165,250,.6); }
+    .feat-tag {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.58rem;
+      font-weight: 700;
+      color: var(--blue);
+      letter-spacing: 0.14em;
+      margin-bottom: 8px;
+    }
+    .feat-title {
+      font-size: 0.84rem;
+      font-weight: 700;
+      color: var(--text-1);
+      margin-bottom: 8px;
+    }
+    .feat-desc {
+      font-size: 0.73rem;
+      font-weight: 500;
+      color: var(--text-2);
+      line-height: 1.7;
+    }
+    .feat-desc code {
+      font-family: 'JetBrains Mono', monospace;
+      background: var(--bg-deep);
+      color: var(--red);
+      padding: 1px 6px;
+      font-size: 0.67rem;
+      border: 1px solid var(--border);
+    }
+
+    /* ── Dependencies ── */
+    .dep-grid { display: flex; flex-wrap: wrap; gap: 8px; }
+    .dep {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      padding: 8px 15px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      transition: border-color .15s;
+      cursor: default;
+    }
+    .dep:hover { border-color: var(--border-hi); }
+    .dep-name {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.72rem;
+      font-weight: 700;
+      color: var(--text-1);
+    }
+    .dep-role {
+      font-size: 0.63rem;
+      font-weight: 600;
+      color: var(--text-3);
+    }
+    .dep-ai {
+      border-color: rgba(251,191,36,.25);
+      background: #16120a;
+    }
+    .dep-ai .dep-name { color: var(--yellow); }
+
+    /* ─────────────────────────────────────────
+       PAGE 2 — FLOWCHART (SVG)
+    ───────────────────────────────────────── */
+    .flowchart-wrap {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      padding: 24px 16px;
+      overflow: hidden;
+      position: relative;
+    }
+    .fc-svg-container {
+      width: 100%;
+      cursor: zoom-in;
+      transition: transform .35s cubic-bezier(.25,.46,.45,.94);
+    }
+    .fc-svg-container.zoomed {
+      transform: scale(1.35);
+      cursor: zoom-out;
+    }
+    #fc-svg {
+      display: block;
+      width: 100%;
+      height: auto;
+    }
+    /* hint label */
+    .fc-zoom-hint {
+      text-align: center;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.62rem;
+      font-weight: 600;
+      color: var(--text-3);
+      margin-top: 10px;
+      letter-spacing: 0.06em;
+    }
+
+    /* node backgrounds */
+    .fc-node-start    { fill: #0d1e33; stroke: rgba(96,165,250,.55); stroke-width: 1.5; }
+    .fc-node-process  { fill: #131c28; stroke: #505a6e;              stroke-width: 1.5; }
+    .fc-node-decision { fill: #1e1a08; stroke: rgba(202,138,4,.55);  stroke-width: 1.5; }
+    .fc-node-ok       { fill: #0a1f12; stroke: rgba(74,222,128,.55); stroke-width: 1.5; }
+    .fc-node-err      { fill: #1f0d0d; stroke: rgba(248,113,113,.55);stroke-width: 1.5; }
+
+    /* node text */
+    .fc-t-main {
+      font-family: 'Inter', sans-serif;
+      font-weight: 700;
+      font-size: 12.5px;
+      fill: #e6edf3;
+    }
+    .fc-t-main.start   { fill: #93c5fd; }
+    .fc-t-main.ok      { fill: #4ade80; }
+    .fc-t-main.err     { fill: #f87171; }
+    .fc-t-main.decide  { fill: #fbbf24; }
+    .fc-t-sub {
+      font-family: 'JetBrains Mono', monospace;
+      font-weight: 500;
+      font-size: 9.5px;
+      fill: #a0adb8;
+    }
+
+    /* edges */
+    .fc-edge {
+      fill: none;
+      stroke: #505a6e;
+      stroke-width: 1.5;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+    }
+    .fc-edge-yes { stroke: rgba(74,222,128,.7); }
+    .fc-edge-no  { stroke: rgba(248,113,113,.7); }
+
+    /* animated draw-on */
+    @keyframes draw-path {
+      from { stroke-dashoffset: var(--len); }
+      to   { stroke-dashoffset: 0; }
+    }
+    .fc-edge.animated {
+      stroke-dasharray: var(--len);
+      stroke-dashoffset: var(--len);
+    }
+    .fc-edge.animated.run {
+      animation: draw-path .6s ease forwards;
+    }
+
+    /* arrowheads */
+    .fc-label-yes {
+      font-family: 'JetBrains Mono', monospace;
+      font-weight: 700;
+      font-size: 9px;
+      fill: #4ade80;
+    }
+    .fc-label-no {
+      font-family: 'JetBrains Mono', monospace;
+      font-weight: 700;
+      font-size: 9px;
+      fill: #f87171;
+    }
+
+    /* ── Error grid ── */
+    .err-grid { display: grid; grid-template-columns: repeat(3,1fr); gap: 10px; }
+    .err-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      padding: 18px 20px;
+    }
+    .err-title {
+      font-size: 0.83rem;
+      font-weight: 700;
+      color: var(--text-1);
+      margin-bottom: 8px;
+    }
+    .err-desc {
+      font-size: 0.73rem;
+      font-weight: 500;
+      color: var(--text-2);
+      line-height: 1.65;
+    }
+    .err-desc code {
+      font-family: 'JetBrains Mono', monospace;
+      background: var(--bg-deep);
+      color: var(--red);
+      padding: 1px 6px;
+      font-size: 0.67rem;
+      border: 1px solid var(--border);
+    }
+
+    /* ─────────────────────────────────────────
+       PAGE 3 — CODE & HIGHLIGHTS
+    ───────────────────────────────────────── */
+    .code-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+    }
+    .code-card {
+      background: #07090e;
+      border: 1px solid var(--border);
+      overflow: hidden;
+    }
+    .code-card-hdr {
+      padding: 10px 16px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      border-bottom: 1px solid var(--border);
+      background: var(--bg-card);
+    }
+    .code-card-title {
+      font-size: 0.72rem;
+      font-weight: 700;
+      color: var(--text-1);
+    }
+    .code-tag {
       font-family: 'JetBrains Mono', monospace;
       font-size: 0.62rem;
       font-weight: 700;
       padding: 2px 9px;
+      background: rgba(74,222,128,.08);
+      color: var(--green);
+      border: 1px solid rgba(74,222,128,.3);
     }
-    .dk-src-status.ok { background: #4ade8018; color: #4ade80; border: 1px solid #4ade8055; }
-
-    .dk-io-arrow {
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      gap: 8px;
-      flex-shrink: 0;
-      padding: 0 10px;
-    }
-    .dk-arrow-line {
-      width: 36px;
-      height: 2px;
-      background: linear-gradient(90deg, #404858, #60a5fa);
-      position: relative;
-    }
-    .dk-arrow-line::after {
-      content: '';
-      position: absolute;
-      right: -5px; top: 50%;
-      transform: translateY(-50%);
-      border-top: 5px solid transparent;
-      border-bottom: 5px solid transparent;
-      border-left: 6px solid #60a5fa;
-    }
-    .dk-arrow-label {
-      font-family: 'JetBrains Mono', monospace;
-      font-size: 0.64rem;
-      font-weight: 600;
-      color: #c8d4e0;
-      text-align: center;
-      line-height: 1.6;
-    }
-    .dk-output-card {
-      flex: 1;
-      background: #1c2230;
-      border: 1px solid #60a5fa44;
-      border-top: 2px solid #60a5fa;
-      padding: 20px;
-    }
-    .dk-output-title {
-      font-family: 'JetBrains Mono', monospace;
-      font-size: 0.73rem;
-      font-weight: 700;
-      color: #60a5fa;
-      margin-bottom: 14px;
-    }
-    .dk-out-row {
-      display: flex;
-      gap: 12px;
-      margin-bottom: 8px;
-      font-size: 0.73rem;
-    }
-    .dk-out-key {
-      font-family: 'JetBrains Mono', monospace;
-      font-weight: 600;
-      color: #c8d4e0;
-      min-width: 62px;
-    }
-    .dk-out-val {
-      font-family: 'Inter', sans-serif;
-      color: #e6edf3;
-      font-weight: 500;
-    }
-
-    /* ── Feature cards ── */
-    .dk-features {
-      display: grid;
-      grid-template-columns: repeat(3, 1fr);
-      gap: 12px;
-    }
-    .dk-feat {
-      background: #1c2230;
-      border: 1px solid #404858;
-      border-left: 3px solid #60a5fa;
-      padding: 20px;
-    }
-    .dk-feat-tag {
-      font-family: 'JetBrains Mono', monospace;
-      font-size: 0.6rem;
-      font-weight: 700;
-      color: #60a5fa;
-      letter-spacing: 0.14em;
-      margin-bottom: 8px;
-    }
-    .dk-feat-title {
-      font-family: 'Inter', sans-serif;
-      font-size: 0.85rem;
-      font-weight: 700;
-      color: #f0f6fc;
-      margin-bottom: 8px;
-    }
-    .dk-feat-desc {
-      font-family: 'Inter', sans-serif;
-      font-size: 0.74rem;
-      font-weight: 500;
-      color: #c8d4e0;
-      line-height: 1.65;
-    }
-    .dk-feat-desc code {
-      font-family: 'JetBrains Mono', monospace;
-      background: #080b10;
-      color: #f87171;
-      padding: 1px 6px;
-      font-size: 0.68rem;
-      border: 1px solid #404858;
-    }
-
-    /* ── Dependencies ── */
-    .dk-stack {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 8px;
-    }
-    .dk-dep {
-      background: #1c2230;
-      border: 1px solid #404858;
-      padding: 8px 16px;
-      display: flex;
-      align-items: center;
-      gap: 10px;
-      transition: border-color 0.15s;
-    }
-    .dk-dep:hover { border-color: #4ade8055; }
-    .dk-dep-name {
-      font-family: 'JetBrains Mono', monospace;
-      font-size: 0.73rem;
-      font-weight: 700;
-      color: #e6edf3;
-    }
-    .dk-dep-role {
-      font-family: 'Inter', sans-serif;
-      font-size: 0.65rem;
-      font-weight: 500;
-      color: #c8d4e0;
-    }
-    .dk-dep-ai { border-color: #fbbf2444; background: #1a160a; }
-    .dk-dep-ai .dk-dep-name { color: #fbbf24; }
-
-    /* ── Flowchart (Page 2) ── */
-    .dk-flowchart {
-      background: #1c2230;
-      border: 1px solid #404858;
-      padding: 36px 24px;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-    }
-    .fc-box {
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: center;
-      text-align: center;
-      padding: 13px 20px;
-      min-width: 130px;
-      font-size: 0.8rem;
-      font-weight: 600;
-      line-height: 1.4;
-      font-family: 'Inter', sans-serif;
-    }
-    .fc-box.start {
-      background: #0d1e33; border: 1.5px solid #60a5fa77; color: #93c5fd;
-    }
-    .fc-box.process {
-      background: #1a2030; border: 1.5px solid #505a6e; color: #e6edf3;
-    }
-    .fc-box.decision {
-      background: #1e1a08; border: 1.5px solid #ca8a0477; color: #fbbf24;
-      min-width: 148px;
-    }
-    .fc-box.end-success {
-      background: #0a1f12; border: 1.5px solid #4ade8077; color: #4ade80;
-      min-width: 130px;
-    }
-    .fc-box.end-alert {
-      background: #1f0d0d; border: 1.5px solid #f8717177; color: #f87171;
-      min-width: 130px;
-    }
-    .fc-label {
-      font-size: 0.64rem;
-      font-weight: 500;
-      color: #a0adb8;
-      margin-top: 4px;
-      font-family: 'JetBrains Mono', monospace;
-    }
-    .fc-row {
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      width: 100%;
-    }
-    .fc-arrow-down {
-      width: 2px; height: 28px;
-      background: #505a6e;
-      margin: 0 auto; position: relative;
-    }
-    .fc-arrow-down::after {
-      content: ''; position: absolute; bottom: -5px; left: 50%;
-      transform: translateX(-50%);
-      border-left: 5px solid transparent; border-right: 5px solid transparent;
-      border-top: 6px solid #505a6e;
-    }
-    .fc-arrow-right {
-      width: 40px; height: 2px; background: #505a6e; position: relative; flex-shrink: 0;
-    }
-    .fc-arrow-right::after {
-      content: ''; position: absolute; right: -5px; top: 50%;
-      transform: translateY(-50%);
-      border-top: 5px solid transparent; border-bottom: 5px solid transparent;
-      border-left: 6px solid #505a6e;
-    }
-    .fc-arrow-left {
-      width: 40px; height: 2px; background: #505a6e; position: relative; flex-shrink: 0;
-    }
-    .fc-arrow-left::after {
-      content: ''; position: absolute; left: -5px; top: 50%;
-      transform: translateY(-50%);
-      border-top: 5px solid transparent; border-bottom: 5px solid transparent;
-      border-right: 6px solid #505a6e;
-    }
-    .fc-branch-label {
-      font-family: 'JetBrains Mono', monospace;
-      font-size: 0.65rem;
-      font-weight: 600;
-      color: #c8d4e0;
-      margin: 0 6px;
-      white-space: nowrap;
-    }
-
-    /* ── Error cards (Page 2) ── */
-    .error-grid { display: grid; grid-template-columns: repeat(3,1fr); gap:12px; }
-    .error-card {
-      background: #1c2230;
-      border: 1px solid #404858;
-      padding: 20px;
-    }
-    .error-card-title {
-      font-size: 0.84rem;
-      font-weight: 700;
-      color: #f0f6fc;
-      margin-bottom: 8px;
-      font-family: 'Inter', sans-serif;
-    }
-    .error-card-desc {
-      font-size: 0.75rem;
-      font-weight: 500;
-      color: #c8d4e0;
-      line-height: 1.65;
-      font-family: 'Inter', sans-serif;
-    }
-    .error-card-desc code {
-      font-family: 'JetBrains Mono', monospace;
-      background: #080b10;
-      color: #f87171;
-      padding: 1px 6px;
-      font-size: 0.68rem;
-      border: 1px solid #404858;
-    }
-
-    /* ── Code cards (Page 3) ── */
-    .code-split {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 14px;
-    }
-    .code-card {
-      background: #080b10;
-      border: 1px solid #404858;
-      overflow: hidden;
-    }
-    .code-card-header {
-      padding: 11px 16px;
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      border-bottom: 1px solid #404858;
-      background: #1c2230;
-    }
-    .code-card-title {
-      font-family: 'Inter', sans-serif;
-      font-size: 0.74rem;
-      font-weight: 600;
-      color: #e6edf3;
-    }
-    .code-tag {
-      font-family: 'JetBrains Mono', monospace;
-      font-size: 0.63rem;
-      padding: 2px 9px;
-      font-weight: 700;
-    }
-    .code-tag.after { background: #0e2a1a; color: #4ade80; border: 1px solid #4ade8055; }
     pre {
       padding: 16px;
-      font-size: 0.73rem;
-      line-height: 1.75;
-      color: #e6edf3;
+      font-size: 0.72rem;
+      line-height: 1.78;
+      color: var(--text-1);
       overflow-x: auto;
-      font-family: 'JetBrains Mono', 'Cascadia Code', 'Fira Code', 'Consolas', monospace;
+      font-family: 'JetBrains Mono', 'Cascadia Code', 'Fira Code', monospace;
+      font-weight: 500;
     }
-    .hl-keyword { color: #f472b6; font-weight: 600; }
-    .hl-var     { color: #60a5fa; }
-    .hl-string  { color: #86efac; }
-    .hl-comment { color: #6e7681; font-style: italic; }
-    .hl-num     { color: #fb923c; }
+    .kw  { color: #f472b6; font-weight: 700; }
+    .vr  { color: var(--blue); }
+    .st  { color: #86efac; }
+    .cm  { color: #4d5a6a; font-style: italic; }
+    .nm  { color: var(--orange); }
 
-    /* ── Convo cards (Page 3) ── */
-    .convo-grid {
-      display: grid;
-      grid-template-columns: repeat(2, 1fr);
-      gap: 14px;
-    }
+    /* ── Typing reveal ── */
+    .code-card,
     .convo-card {
-      background: #1c2230;
-      border: 1px solid #404858;
+      cursor: pointer;
+    }
+    .code-card pre .char {
+      transition: none;
+    }
+    /* blinking cursor at end of typed content */
+    .type-cursor {
+      display: inline-block;
+      width: 2px;
+      height: 1em;
+      background: var(--green);
+      vertical-align: text-bottom;
+      margin-left: 1px;
+      animation: blink .9s step-end infinite;
+    }
+    /* convo bubble hidden state */
+    .convo-card .msg {
+      opacity: 0;
+      transform: translateY(6px);
+      transition: opacity .25s ease, transform .25s ease;
+    }
+    .convo-card .msg.visible {
+      opacity: 1;
+      transform: translateY(0);
+    }
+    /* subtle ring on hover to hint clickable */
+    .code-card:hover  { border-color: var(--border-hi); }
+    .convo-card:hover { border-color: var(--border-hi); }
+
+    /* ── Convo cards ── */
+    .convo-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+    .convo-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
       overflow: hidden;
     }
-    .convo-header {
-      padding: 13px 18px;
-      background: #080b10;
-      border-bottom: 1px solid #404858;
+    .convo-hdr {
+      padding: 11px 18px;
+      background: var(--bg-deep);
+      border-bottom: 1px solid var(--border);
       font-family: 'JetBrains Mono', monospace;
-      font-size: 0.72rem;
+      font-size: 0.7rem;
       font-weight: 700;
-      color: #60a5fa;
+      color: var(--blue);
       letter-spacing: 0.03em;
     }
-    .convo-body { padding: 16px 18px; display: flex; flex-direction: column; gap: 10px; }
+    .convo-body { padding: 14px 16px; display: flex; flex-direction: column; gap: 10px; }
     .msg { display: flex; gap: 10px; align-items: flex-start; }
-    .msg-avatar {
-      width: 28px; height: 28px;
-      font-size: 0.63rem;
+    .avatar {
+      width: 26px; height: 26px;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.6rem;
       font-weight: 700;
       display: flex; align-items: center; justify-content: center;
       flex-shrink: 0;
       margin-top: 1px;
-      font-family: 'JetBrains Mono', monospace;
     }
-    .msg-avatar.user   { background: #0d1e33; color: #60a5fa; border: 1px solid #60a5fa55; }
-    .msg-avatar.claude { background: #1e1a08; color: #fbbf24; border: 1px solid #fbbf2455; }
-    .msg-bubble {
-      font-family: 'Inter', sans-serif;
-      font-size: 0.78rem;
+    .avatar-u { background: rgba(96,165,250,.12); color: var(--blue); border: 1px solid rgba(96,165,250,.35); }
+    .avatar-c { background: rgba(251,191,36,.1); color: var(--yellow); border: 1px solid rgba(251,191,36,.3); }
+    .bubble {
+      font-size: 0.76rem;
       font-weight: 500;
       line-height: 1.65;
-      color: #e6edf3;
-      background: #0f1318;
-      border: 1px solid #404858;
-      padding: 9px 13px;
+      color: var(--text-1);
+      background: var(--bg-page);
+      border: 1px solid var(--border);
+      padding: 8px 12px;
       flex: 1;
     }
-    .msg-bubble.claude-bubble { background: #13110a; border-color: #fbbf2433; }
-    .msg-bubble code {
+    .bubble-c { background: #100f09; border-color: rgba(251,191,36,.2); }
+    .bubble code {
       font-family: 'JetBrains Mono', monospace;
-      background: #080b10;
-      color: #f87171;
-      padding: 1px 6px;
-      font-size: 0.68rem;
-      border: 1px solid #404858;
+      background: var(--bg-deep);
+      color: var(--red);
+      padding: 1px 5px;
+      font-size: 0.66rem;
+      border: 1px solid var(--border);
+    }
+
+    /* ── Responsive ── */
+    @media (max-width: 768px) {
+      /* header */
+      .hdr { padding: 0 20px; min-height: 60px; }
+      .hdr-prompt { display: none; }
+      .hdr-title { font-size: 0.95rem; }
+      .hdr-sub { font-size: 0.62rem; }
+      .hdr-pill { font-size: 0.62rem; padding: 4px 9px; }
+      .tabs-wrap { top: 60px; padding: 0 12px; }
+      .tab { font-size: 0.7rem; padding: 12px 14px; }
+
+      /* page */
+      .page-inner { padding: 24px 16px 48px; }
+      .sec { margin-bottom: 36px; }
+
+      /* tab 01 */
+      .metrics-row { grid-template-columns: repeat(3, 1fr); }
+      .metric:nth-child(4),
+      .metric:nth-child(5) { grid-column: span 1; }
+
+      .io-wrap { flex-direction: column; gap: 12px; }
+      .io-arrow { flex-direction: row; padding: 4px 0; }
+      .arrow-shaft {
+        width: 44px; height: 2px;
+        background: linear-gradient(90deg, var(--border), var(--blue));
+      }
+      .arrow-shaft::after {
+        bottom: 50%; left: auto; right: -5px;
+        transform: translateY(50%);
+        border-left: 6px solid var(--blue);
+        border-right: none;
+        border-top: 5px solid transparent;
+        border-bottom: 5px solid transparent;
+      }
+      .output-card { width: 100%; }
+
+      .feat-grid { grid-template-columns: 1fr; }
+      .err-grid  { grid-template-columns: 1fr; }
+
+      /* tab 03 */
+      .code-grid  { grid-template-columns: 1fr; }
+      .convo-grid { grid-template-columns: 1fr; }
+      pre { font-size: 0.66rem; }
+    }
+
+    @media (max-width: 480px) {
+      .metrics-row { grid-template-columns: repeat(2, 1fr); }
+      .metric:last-child { grid-column: span 2; }
+      .hdr-right .pill-dim:first-of-type { display: none; } /* hide "3 runs/day" on tiny screens */
     }
 
     /* ── Footer ── */
     footer {
       text-align: center;
-      padding: 22px;
+      padding: 20px 24px;
       font-family: 'JetBrains Mono', monospace;
-      font-size: 0.7rem;
-      font-weight: 500;
-      color: #a0adb8;
-      border-top: 1px solid #404858;
-      background: #080b10;
+      font-size: 0.67rem;
+      font-weight: 600;
+      color: var(--text-3);
+      border-top: 1px solid var(--border);
+      background: var(--bg-deep);
+      letter-spacing: 0.04em;
     }
   </style>
 </head>
 <body>
 
-<header class="hdr-dark">
+<!-- ══ Header ══ -->
+<header class="hdr">
   <div class="hdr-left">
     <span class="hdr-prompt">~/projects/outbound-report</span>
     <h1 class="hdr-title">outbound_report<span class="hdr-cursor">_</span></h1>
     <p class="hdr-sub">Multi-carrier daily report automation &nbsp;·&nbsp; Python &nbsp;·&nbsp; POP3 → XLSX → SMTP</p>
   </div>
   <div class="hdr-right">
-    <span class="hdr-pill hdr-green">● ACTIVE</span>
-    <span class="hdr-pill hdr-dim">3 runs/day</span>
-    <span class="hdr-pill hdr-dim">v1.3</span>
+    <span class="hdr-pill pill-green"><span class="dot"></span>ACTIVE</span>
+    <span class="hdr-pill pill-dim">3 runs/day</span>
+    <span class="hdr-pill pill-dim">v1.3</span>
   </div>
 </header>
 
-<!-- Tabs -->
-<div class="tabs-dark">
-  <div class="tab active" onclick="switchTab(0)"><span class="tab-idx">01</span> Overview</div>
-  <div class="tab" onclick="switchTab(1)"><span class="tab-idx">02</span> Pipeline Flow</div>
-  <div class="tab" onclick="switchTab(2)"><span class="tab-idx">03</span> Code &amp; Highlights</div>
+<!-- ══ Tabs ══ -->
+<div class="tabs-wrap">
+  <div class="tab active" onclick="switchTab(0)"><span class="tab-num">01</span>Overview</div>
+  <div class="tab" onclick="switchTab(1)"><span class="tab-num">02</span>Pipeline Flow</div>
+  <div class="tab" onclick="switchTab(2)"><span class="tab-num">03</span>Code &amp; Highlights</div>
 </div>
 
-<!-- ══════════════════════════════════════════
+<!-- ══════════════════════════════════════
      PAGE 1 — OVERVIEW
-══════════════════════════════════════════ -->
+══════════════════════════════════════ -->
 <div class="page active" id="page-0">
   <div class="page-inner">
 
-    <div class="dk-section">
-      <p class="dk-label">// system_metrics</p>
-      <div class="dk-metrics">
-        <div class="dk-metric">
-          <div class="dk-metric-val">5</div>
-          <div class="dk-metric-key">sources_merged</div>
-          <div class="dk-metric-sub">carriers / day</div>
+    <!-- Metrics -->
+    <div class="sec">
+      <p class="sec-label">// system_metrics</p>
+      <div class="metrics-row">
+        <div class="metric m-blue anim-fade-up d1">
+          <div class="metric-val">5</div>
+          <div class="metric-key">sources_merged</div>
+          <div class="metric-sub">carriers / day</div>
         </div>
-        <div class="dk-metric">
-          <div class="dk-metric-val">3</div>
-          <div class="dk-metric-key">scheduled_runs</div>
-          <div class="dk-metric-sub">17:00 · 18:00 · 19:00</div>
+        <div class="metric m-green anim-fade-up d2">
+          <div class="metric-val">3</div>
+          <div class="metric-key">scheduled_runs</div>
+          <div class="metric-sub">17:00 · 18:00 · 19:00</div>
         </div>
-        <div class="dk-metric">
-          <div class="dk-metric-val">0</div>
-          <div class="dk-metric-key">manual_steps</div>
-          <div class="dk-metric-sub">fully automated</div>
+        <div class="metric m-red anim-fade-up d3">
+          <div class="metric-val">0</div>
+          <div class="metric-key">manual_steps</div>
+          <div class="metric-sub">fully automated</div>
         </div>
-        <div class="dk-metric">
-          <div class="dk-metric-val">.xlsb</div>
-          <div class="dk-metric-key">output_format</div>
-          <div class="dk-metric-sub">live pivot table</div>
+        <div class="metric m-yellow anim-fade-up d4">
+          <div class="metric-val">.xlsb</div>
+          <div class="metric-key">output_format</div>
+          <div class="metric-sub">live pivot table</div>
         </div>
-        <div class="dk-metric">
-          <div class="dk-metric-val">45m</div>
-          <div class="dk-metric-key">time_saved</div>
-          <div class="dk-metric-sub">per day</div>
-        </div>
-      </div>
-    </div>
-
-    <div class="dk-section">
-      <p class="dk-label">// data_sources → output</p>
-      <div class="dk-io">
-        <div class="dk-sources">
-          <div class="dk-source-row">
-            <span class="dk-src-carrier">CA</span>
-            <span class="dk-src-name">IOD Report</span>
-            <span class="dk-src-type">.xlsx</span>
-            <span class="dk-src-status ok">received</span>
-          </div>
-          <div class="dk-source-row">
-            <span class="dk-src-carrier">CB</span>
-            <span class="dk-src-name">LTL Daily Exception List</span>
-            <span class="dk-src-type">.xlsx</span>
-            <span class="dk-src-status ok">received</span>
-          </div>
-          <div class="dk-source-row">
-            <span class="dk-src-carrier">CB</span>
-            <span class="dk-src-name">MR Daily Exception List</span>
-            <span class="dk-src-type">.xlsx</span>
-            <span class="dk-src-status ok">received</span>
-          </div>
-          <div class="dk-source-row">
-            <span class="dk-src-carrier">CC</span>
-            <span class="dk-src-name">Daily Manifest</span>
-            <span class="dk-src-type">.xlsx</span>
-            <span class="dk-src-status ok">received</span>
-          </div>
-          <div class="dk-source-row">
-            <span class="dk-src-carrier">CD</span>
-            <span class="dk-src-name">Daily Manifest Report</span>
-            <span class="dk-src-type">.csv</span>
-            <span class="dk-src-status ok">received</span>
-          </div>
-        </div>
-        <div class="dk-io-arrow">
-          <div class="dk-arrow-line"></div>
-          <div class="dk-arrow-label">transform<br>+ merge</div>
-        </div>
-        <div class="dk-output-card">
-          <div class="dk-output-title">Consolidated_Daily_Manifest.xlsb</div>
-          <div class="dk-out-row"><span class="dk-out-key">schema</span><span class="dk-out-val">19-col standardized</span></div>
-          <div class="dk-out-row"><span class="dk-out-key">pivot</span><span class="dk-out-val">auto-refreshed via xlwings</span></div>
-          <div class="dk-out-row"><span class="dk-out-key">format</span><span class="dk-out-val">.xlsb · freeze panes · filters</span></div>
-          <div class="dk-out-row"><span class="dk-out-key">email</span><span class="dk-out-val">pivot HTML embedded in body</span></div>
-          <div class="dk-out-row"><span class="dk-out-key">storage</span><span class="dk-out-val">date-stamped folder / day</span></div>
+        <div class="metric m-purple anim-fade-up d5">
+          <div class="metric-val">45m</div>
+          <div class="metric-key">time_saved</div>
+          <div class="metric-sub">per day</div>
         </div>
       </div>
     </div>
 
-    <div class="dk-section">
-      <p class="dk-label">// technical_highlights</p>
-      <div class="dk-features">
-        <div class="dk-feat">
-          <div class="dk-feat-tag">SCHEDULE</div>
-          <div class="dk-feat-title">3-Run Daily Dispatch</div>
-          <div class="dk-feat-desc">sys.argv mode flag per bat file — threshold shifts per run (≥1700 / ≥1800) to prevent duplicate sends without external state.</div>
+    <!-- IO -->
+    <div class="sec">
+      <p class="sec-label">// data_sources → output</p>
+      <div class="io-wrap">
+        <div class="sources-col">
+          <div class="src-row anim-fade-up d1"><span class="src-carrier">CA</span><span class="src-name">IOD Report</span><span class="src-ext">.xlsx</span><span class="src-badge">received</span></div>
+          <div class="src-row anim-fade-up d2"><span class="src-carrier">CB</span><span class="src-name">LTL Daily Exception List</span><span class="src-ext">.xlsx</span><span class="src-badge">received</span></div>
+          <div class="src-row anim-fade-up d3"><span class="src-carrier">CB</span><span class="src-name">MR Daily Exception List</span><span class="src-ext">.xlsx</span><span class="src-badge">received</span></div>
+          <div class="src-row anim-fade-up d4"><span class="src-carrier">CC</span><span class="src-name">Daily Manifest</span><span class="src-ext">.xlsx</span><span class="src-badge">received</span></div>
+          <div class="src-row anim-fade-up d5"><span class="src-carrier">CD</span><span class="src-name">Daily Manifest Report</span><span class="src-ext">.csv</span><span class="src-badge">received</span></div>
         </div>
-        <div class="dk-feat">
-          <div class="dk-feat-tag">DETECTION</div>
-          <div class="dk-feat-title">Stateless Update Signal</div>
-          <div class="dk-feat-desc">_HHMM suffix embedded at download time. Re-run checks filename timestamp — no lock files, no DB, no mtime dependency.</div>
+        <div class="io-arrow">
+          <div class="arrow-shaft"></div>
+          <div class="arrow-label">TRANSFORM<br>+ MERGE</div>
         </div>
-        <div class="dk-feat">
-          <div class="dk-feat-tag">RESILIENCE</div>
-          <div class="dk-feat-title">Fault-Tolerant Sources</div>
-          <div class="dk-feat-desc">Per-source try/except in dispatch table. Missing file → skipped. RuntimeError only when dfs is empty. Alert and report fully decoupled.</div>
-        </div>
-        <div class="dk-feat">
-          <div class="dk-feat-tag">PERF</div>
-          <div class="dk-feat-title">POP3 Early Termination</div>
-          <div class="dk-feat-desc">Newest-first scan with matched_keys set — exits immediately when all 5 targets hit, or on first email older than today.</div>
-        </div>
-        <div class="dk-feat">
-          <div class="dk-feat-tag">OUTPUT</div>
-          <div class="dk-feat-title">Template-Driven Excel</div>
-          <div class="dk-feat-desc">Data injected at A2 into pre-built template. xlwings refresh captures pivot state before .xlsb export — formatting preserved every run.</div>
-        </div>
-        <div class="dk-feat">
-          <div class="dk-feat-tag">EMAIL</div>
-          <div class="dk-feat-title">Pivot in Email Body</div>
-          <div class="dk-feat-desc">Post-refresh pivot captured as 2D list, rendered to inline HTML table — recipients see summary without opening the attachment.</div>
+        <div class="output-card anim-fade-up d3">
+          <div class="output-title">Consolidated_Daily_Manifest.xlsb</div>
+          <div class="out-row"><span class="out-key">schema</span><span class="out-val">19-col standardized</span></div>
+          <div class="out-row"><span class="out-key">pivot</span><span class="out-val">auto-refreshed via xlwings</span></div>
+          <div class="out-row"><span class="out-key">format</span><span class="out-val">.xlsb · freeze panes · filters</span></div>
+          <div class="out-row"><span class="out-key">email</span><span class="out-val">pivot HTML embedded in body</span></div>
+          <div class="out-row"><span class="out-key">storage</span><span class="out-val">date-stamped folder / day</span></div>
         </div>
       </div>
     </div>
 
-    <div class="dk-section">
-      <p class="dk-label">// dependencies</p>
-      <div class="dk-stack">
-        <div class="dk-dep"><span class="dk-dep-name">python</span><span class="dk-dep-role">runtime</span></div>
-        <div class="dk-dep"><span class="dk-dep-name">pandas</span><span class="dk-dep-role">transform</span></div>
-        <div class="dk-dep"><span class="dk-dep-name">xlwings</span><span class="dk-dep-role">excel automation</span></div>
-        <div class="dk-dep"><span class="dk-dep-name">openpyxl</span><span class="dk-dep-role">excel utils</span></div>
-        <div class="dk-dep"><span class="dk-dep-name">poplib</span><span class="dk-dep-role">pop3 inbound</span></div>
-        <div class="dk-dep"><span class="dk-dep-name">smtplib</span><span class="dk-dep-role">smtp outbound</span></div>
-        <div class="dk-dep"><span class="dk-dep-name">pytz</span><span class="dk-dep-role">tz handling</span></div>
-        <div class="dk-dep"><span class="dk-dep-name">python-dotenv</span><span class="dk-dep-role">credentials</span></div>
-        <div class="dk-dep"><span class="dk-dep-name">claude-code</span><span class="dk-dep-role">AI dev</span></div>
+    <!-- Technical Highlights -->
+    <div class="sec">
+      <p class="sec-label">// technical_highlights</p>
+      <div class="feat-grid">
+        <div class="feat-card anim-fade-up d1">
+          <div class="feat-tag">SCHEDULE</div>
+          <div class="feat-title">3-Run Daily Dispatch</div>
+          <div class="feat-desc">sys.argv mode flag per bat file — threshold shifts per run (≥1700 / ≥1800) to prevent duplicate sends without external state.</div>
+        </div>
+        <div class="feat-card anim-fade-up d2">
+          <div class="feat-tag">DETECTION</div>
+          <div class="feat-title">Stateless Update Signal</div>
+          <div class="feat-desc"><code>_HHMM</code> suffix embedded at download time. Re-run checks filename timestamp — no lock files, no DB, no mtime dependency.</div>
+        </div>
+        <div class="feat-card anim-fade-up d3">
+          <div class="feat-tag">RESILIENCE</div>
+          <div class="feat-title">Fault-Tolerant Sources</div>
+          <div class="feat-desc">Per-source <code>try/except</code> in dispatch table. Missing file → skipped. <code>RuntimeError</code> only when <code>dfs</code> is empty. Alert and report fully decoupled.</div>
+        </div>
+        <div class="feat-card anim-fade-up d4">
+          <div class="feat-tag">PERF</div>
+          <div class="feat-title">POP3 Early Termination</div>
+          <div class="feat-desc">Newest-first scan with <code>matched_keys</code> set — exits immediately when all 5 targets hit, or on first email older than today.</div>
+        </div>
+        <div class="feat-card anim-fade-up d5">
+          <div class="feat-tag">OUTPUT</div>
+          <div class="feat-title">Template-Driven Excel</div>
+          <div class="feat-desc">Data injected at A2 into pre-built template. xlwings refresh captures pivot state before <code>.xlsb</code> export — formatting preserved every run.</div>
+        </div>
+        <div class="feat-card anim-fade-up d6">
+          <div class="feat-tag">EMAIL</div>
+          <div class="feat-title">Pivot in Email Body</div>
+          <div class="feat-desc">Post-refresh pivot captured as 2D list, rendered to inline HTML table — recipients see summary without opening the attachment.</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Dependencies -->
+    <div class="sec">
+      <p class="sec-label">// dependencies</p>
+      <div class="dep-grid">
+        <div class="dep"><span class="dep-name">python</span><span class="dep-role">runtime</span></div>
+        <div class="dep"><span class="dep-name">pandas</span><span class="dep-role">transform</span></div>
+        <div class="dep"><span class="dep-name">xlwings</span><span class="dep-role">excel automation</span></div>
+        <div class="dep"><span class="dep-name">openpyxl</span><span class="dep-role">excel utils</span></div>
+        <div class="dep"><span class="dep-name">poplib</span><span class="dep-role">pop3 inbound</span></div>
+        <div class="dep"><span class="dep-name">smtplib</span><span class="dep-role">smtp outbound</span></div>
+        <div class="dep"><span class="dep-name">pytz</span><span class="dep-role">tz handling</span></div>
+        <div class="dep"><span class="dep-name">python-dotenv</span><span class="dep-role">credentials</span></div>
+        <div class="dep"><span class="dep-name">claude-code</span><span class="dep-role">AI dev</span></div>
       </div>
     </div>
 
   </div>
 </div>
 
-<!-- ══════════════════════════════════════════
+<!-- ══════════════════════════════════════
      PAGE 2 — PIPELINE FLOW
-══════════════════════════════════════════ -->
+══════════════════════════════════════ -->
 <div class="page" id="page-1">
   <div class="page-inner">
 
-    <div class="dk-section">
-      <p class="dk-label">// execution_flow</p>
-      <div class="dk-flowchart">
+    <div class="sec">
+      <p class="sec-label">// execution_flow</p>
+      <div class="flowchart-wrap">
+        <div class="fc-svg-container">
+        <svg id="fc-svg" viewBox="0 0 980 820">
+          <defs>
+            <marker id="arr"     markerWidth="7" markerHeight="7" refX="6" refY="3.5" orient="auto">
+              <path d="M0,0.5 L0,6.5 L7,3.5 z" fill="#505a6e"/>
+            </marker>
+            <marker id="arr-yes" markerWidth="7" markerHeight="7" refX="6" refY="3.5" orient="auto">
+              <path d="M0,0.5 L0,6.5 L7,3.5 z" fill="rgba(74,222,128,.85)"/>
+            </marker>
+            <marker id="arr-no"  markerWidth="7" markerHeight="7" refX="6" refY="3.5" orient="auto">
+              <path d="M0,0.5 L0,6.5 L7,3.5 z" fill="rgba(248,113,113,.85)"/>
+            </marker>
+          </defs>
 
-        <div class="fc-box start">Scheduled Run<span class="fc-label">17:00 · 18:00 · 19:00</span></div>
-        <div class="fc-arrow-down"></div>
+          <!-- ══ EDGES ══ -->
+          <!-- main spine -->
+          <line class="fc-edge animated" x1="450" y1="58"  x2="450" y2="86"  marker-end="url(#arr)"/>
+          <line class="fc-edge animated" x1="450" y1="138" x2="450" y2="166" marker-end="url(#arr)"/>
+          <line class="fc-edge animated" x1="450" y1="218" x2="450" y2="258" marker-end="url(#arr)"/>
 
-        <div class="fc-box process">
-          Connect to POP3 Mailbox
-          <span class="fc-label">newest-first · stop at yesterday</span>
+          <!-- Decision1 → No (left) -->
+          <path class="fc-edge fc-edge-no animated"
+                d="M 422,284 H 148 V 330" marker-end="url(#arr-no)"/>
+          <!-- Decision1 → Yes (right) -->
+          <path class="fc-edge fc-edge-yes animated"
+                d="M 478,284 H 700 V 330" marker-end="url(#arr-yes)"/>
+
+          <!-- LEFT branch: Skip → Alert -->
+          <line class="fc-edge fc-edge-no animated"
+                x1="148" y1="382" x2="148" y2="420" marker-end="url(#arr-no)"/>
+
+          <!-- RIGHT branch: Transform → Consolidate → Decision2 -->
+          <line class="fc-edge fc-edge-yes animated"
+                x1="700" y1="382" x2="700" y2="420" marker-end="url(#arr-yes)"/>
+          <line class="fc-edge fc-edge-yes animated"
+                x1="700" y1="472" x2="700" y2="510" marker-end="url(#arr-yes)"/>
+
+          <!-- Decision2 → No (send report, 1st run) -->
+          <path class="fc-edge fc-edge-no animated"
+                d="M 668,536 H 548 V 582" marker-end="url(#arr-no)"/>
+          <!-- Decision2 → Yes (check new files) -->
+          <path class="fc-edge fc-edge-yes animated"
+                d="M 732,536 H 810 V 582" marker-end="url(#arr-yes)"/>
+
+          <!-- Decision3 → Updated (left) -->
+          <path class="fc-edge fc-edge-yes animated"
+                d="M 786,608 H 740 V 652" marker-end="url(#arr-yes)"/>
+          <!-- Decision3 → No Update (right) -->
+          <path class="fc-edge fc-edge-no animated"
+                d="M 834,608 H 855 V 652" marker-end="url(#arr-no)"/>
+
+          <!-- ══ NODES ══ -->
+
+          <!-- Scheduled Run (rounded pill) -->
+          <rect class="fc-node-start" x="330" y="14" width="240" height="44" rx="4"/>
+          <text class="fc-t-main start" x="450" y="31" text-anchor="middle" dominant-baseline="middle" dy="5">Scheduled Run</text>
+          <text class="fc-t-sub"        x="450" y="49" text-anchor="middle">17:00 · 18:00 · 19:00</text>
+
+          <!-- Connect POP3 -->
+          <rect class="fc-node-process" x="320" y="86" width="260" height="52" rx="0"/>
+          <text class="fc-t-main" x="450" y="107" text-anchor="middle">Connect to POP3 Mailbox</text>
+          <text class="fc-t-sub"  x="450" y="124" text-anchor="middle">newest-first · stop at yesterday</text>
+
+          <!-- Match Targets -->
+          <rect class="fc-node-process" x="320" y="166" width="260" height="52" rx="0"/>
+          <text class="fc-t-main" x="450" y="187" text-anchor="middle">Match Email Against Targets</text>
+          <text class="fc-t-sub"  x="450" y="204" text-anchor="middle">subject · sender · date</text>
+
+          <!-- DIAMOND 1: All 5 received? center (450, 284) -->
+          <polygon class="fc-node-decision" points="450,258 530,284 450,310 370,284"/>
+          <text class="fc-t-main decide" x="450" y="280" text-anchor="middle">All 5 files</text>
+          <text class="fc-t-main decide" x="450" y="294" text-anchor="middle">received?</text>
+          <text class="fc-label-no"  x="300" y="279" text-anchor="middle">No (partial)</text>
+          <text class="fc-label-yes" x="600" y="279" text-anchor="middle">Yes</text>
+
+          <!-- Skip Missing Sources -->
+          <rect class="fc-node-process" x="60" y="330" width="176" height="52" rx="0"/>
+          <text class="fc-t-main" x="148" y="350" text-anchor="middle">Skip Missing</text>
+          <text class="fc-t-main" x="148" y="365" text-anchor="middle">Sources</text>
+          <text class="fc-t-sub"  x="148" y="380" text-anchor="middle">continue with received</text>
+
+          <!-- Send Failure Alert -->
+          <rect class="fc-node-err" x="60" y="420" width="176" height="52" rx="0"/>
+          <text class="fc-t-main err" x="148" y="441" text-anchor="middle">Send Failure Alert</text>
+          <text class="fc-t-sub"     x="148" y="458" text-anchor="middle">missing + received detail</text>
+
+          <!-- Transform Each Source -->
+          <rect class="fc-node-process" x="590" y="330" width="220" height="52" rx="0"/>
+          <text class="fc-t-main" x="700" y="350" text-anchor="middle">Transform Each Source</text>
+          <text class="fc-t-sub"  x="700" y="367" text-anchor="middle">reorder · split · format · fill</text>
+
+          <!-- Consolidate + Refresh -->
+          <rect class="fc-node-process" x="590" y="420" width="220" height="52" rx="0"/>
+          <text class="fc-t-main" x="700" y="440" text-anchor="middle">Consolidate + Refresh Pivot</text>
+          <text class="fc-t-sub"  x="700" y="457" text-anchor="middle">write to template → .xlsb</text>
+
+          <!-- DIAMOND 2: .xlsb exists? center (700, 536) -->
+          <polygon class="fc-node-decision" points="700,510 776,536 700,562 624,536"/>
+          <text class="fc-t-main decide" x="700" y="531" text-anchor="middle">.xlsb already</text>
+          <text class="fc-t-main decide" x="700" y="546" text-anchor="middle">exists?</text>
+          <text class="fc-label-no"  x="624" y="530" text-anchor="end">No</text>
+          <text class="fc-label-yes" x="776" y="530" text-anchor="start" dx="4">Yes</text>
+
+          <!-- Send Report (1st run) -->
+          <rect class="fc-node-ok" x="460" y="582" width="176" height="52" rx="0"/>
+          <text class="fc-t-main ok" x="548" y="603" text-anchor="middle">Send Report</text>
+          <text class="fc-t-sub"    x="548" y="620" text-anchor="middle">first run</text>
+
+          <!-- DIAMOND 3: New files? center (810, 608) -->
+          <polygon class="fc-node-decision" points="810,582 862,608 810,634 758,608"/>
+          <text class="fc-t-main decide" x="810" y="603" text-anchor="middle">New</text>
+          <text class="fc-t-main decide" x="810" y="617" text-anchor="middle">files?</text>
+          <text class="fc-t-sub"         x="810" y="647" text-anchor="middle">2nd:≥17:00 · 3rd:≥18:00</text>
+          <text class="fc-label-yes" x="752" y="602" text-anchor="end">Yes</text>
+          <text class="fc-label-no"  x="868" y="602" text-anchor="start" dx="2">No</text>
+
+          <!-- Updated -->
+          <rect class="fc-node-ok" x="690" y="652" width="100" height="48" rx="0"/>
+          <text class="fc-t-main ok" x="740" y="671" text-anchor="middle">Updated</text>
+          <text class="fc-t-sub"    x="740" y="688" text-anchor="middle">re-send report</text>
+
+          <!-- No Update -->
+          <rect class="fc-node-err" x="805" y="652" width="110" height="48" rx="0"/>
+          <text class="fc-t-main err" x="860" y="671" text-anchor="middle">No Update</text>
+          <text class="fc-t-sub"     x="860" y="688" text-anchor="middle">skip notify</text>
+
+        </svg>
         </div>
-        <div class="fc-arrow-down"></div>
-
-        <div class="fc-box process">
-          Match Email Against Targets
-          <span class="fc-label">subject · sender · date</span>
-        </div>
-        <div class="fc-arrow-down"></div>
-
-        <div class="fc-box decision">All 5 files received?</div>
-
-        <div class="fc-row" style="margin-top:0; align-items:flex-start; width:100%; justify-content:center; gap:0;">
-
-          <!-- NO branch -->
-          <div style="display:flex; flex-direction:column; align-items:center; width:240px;">
-            <div style="display:flex; align-items:center;">
-              <div class="fc-arrow-left"></div>
-              <span class="fc-branch-label">No (partial)</span>
-            </div>
-            <div style="height:10px;"></div>
-            <div class="fc-arrow-down"></div>
-            <div class="fc-box process">
-              Skip Missing Sources
-              <span class="fc-label">continue with received files</span>
-            </div>
-            <div class="fc-arrow-down"></div>
-            <div class="fc-box end-alert">Send Failure Alert<span class="fc-label">missing + received detail</span></div>
-          </div>
-
-          <!-- YES branch -->
-          <div style="display:flex; flex-direction:column; align-items:center; width:320px;">
-            <div style="display:flex; align-items:center;">
-              <span class="fc-branch-label">Yes</span>
-              <div class="fc-arrow-right"></div>
-            </div>
-            <div style="height:10px;"></div>
-            <div style="width:2px; height:28px; background:#505a6e; position:relative;">
-              <div style="position:absolute;bottom:-5px;left:50%;transform:translateX(-50%);border-left:5px solid transparent;border-right:5px solid transparent;border-top:6px solid #505a6e;"></div>
-            </div>
-            <div class="fc-box process">
-              Transform Each Source
-              <span class="fc-label">reorder · split · format · fill blanks</span>
-            </div>
-            <div class="fc-arrow-down"></div>
-            <div class="fc-box process">
-              Consolidate + Refresh Pivot
-              <span class="fc-label">write to template → .xlsb</span>
-            </div>
-            <div class="fc-arrow-down"></div>
-            <div class="fc-box decision">.xlsb already exists?</div>
-
-            <div style="display:flex; gap:24px; margin-top:0; align-items:flex-start;">
-              <!-- No = first run -->
-              <div style="display:flex; flex-direction:column; align-items:center; width:130px;">
-                <div style="display:flex; align-items:center;">
-                  <div class="fc-arrow-left"></div>
-                  <span class="fc-branch-label">No</span>
-                </div>
-                <div class="fc-box end-success" style="margin-top:10px;">Send Report<span class="fc-label">first run</span></div>
-              </div>
-              <!-- Yes = check for new files -->
-              <div style="display:flex; flex-direction:column; align-items:center; width:160px;">
-                <div style="display:flex; align-items:center;">
-                  <span class="fc-branch-label">Yes</span>
-                  <div class="fc-arrow-right"></div>
-                </div>
-                <div class="fc-box decision" style="margin-top:10px; min-width:140px;">
-                  New files?
-                  <span class="fc-label">2nd: ≥17:00 · 3rd: ≥18:00</span>
-                </div>
-                <div style="display:flex; gap:12px; margin-top:0; align-items:flex-start;">
-                  <div style="display:flex; flex-direction:column; align-items:center; width:100px;">
-                    <div style="display:flex; align-items:center;">
-                      <div class="fc-arrow-left" style="width:24px;"></div>
-                      <span class="fc-branch-label">Yes</span>
-                    </div>
-                    <div class="fc-box end-success" style="margin-top:10px; min-width:100px;">Updated<span class="fc-label">re-send report</span></div>
-                  </div>
-                  <div style="display:flex; flex-direction:column; align-items:center; width:100px;">
-                    <div style="display:flex; align-items:center;">
-                      <span class="fc-branch-label">No</span>
-                      <div class="fc-arrow-right" style="width:24px;"></div>
-                    </div>
-                    <div class="fc-box end-alert" style="margin-top:10px; min-width:100px;">No Update<span class="fc-label">skip notification</span></div>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-
-        </div>
+        <p class="fc-zoom-hint">click to zoom in</p>
       </div>
     </div>
 
-    <div class="dk-section">
-      <p class="dk-label">// error_handling</p>
-      <div class="error-grid">
-        <div class="error-card" style="border-left:3px solid #f87171;">
-          <div class="error-card-title">POP3 Connection Failure</div>
-          <div class="error-card-desc">Returns <code>DownloadResult(success=False)</code> — pipeline continues with partial files already downloaded.</div>
+    <div class="sec">
+      <p class="sec-label">// error_handling</p>
+      <div class="err-grid">
+        <div class="err-card" style="border-left:3px solid var(--red);">
+          <div class="err-title">POP3 Connection Failure</div>
+          <div class="err-desc">Returns <code>DownloadResult(success=False)</code> — pipeline continues with partial files already downloaded.</div>
         </div>
-        <div class="error-card" style="border-left:3px solid #fb923c;">
-          <div class="error-card-title">Missing Source File</div>
-          <div class="error-card-desc">Source-level <code>FileNotFoundError</code> → skip &amp; continue. Only raises <code>RuntimeError</code> if all sources are missing.</div>
+        <div class="err-card" style="border-left:3px solid var(--orange);">
+          <div class="err-title">Missing Source File</div>
+          <div class="err-desc">Source-level <code>FileNotFoundError</code> → skip &amp; continue. Only raises <code>RuntimeError</code> if all sources are missing.</div>
         </div>
-        <div class="error-card" style="border-left:3px solid #4ade80;">
-          <div class="error-card-title">Email Send Failure</div>
-          <div class="error-card-desc">Missing credentials or SMTP error → logged with full traceback, returns <code>False</code>. No crash.</div>
+        <div class="err-card" style="border-left:3px solid var(--green);">
+          <div class="err-title">Email Send Failure</div>
+          <div class="err-desc">Missing credentials or SMTP error → logged with full traceback, returns <code>False</code>. No crash.</div>
         </div>
-        <div class="error-card" style="border-left:3px solid #60a5fa;">
-          <div class="error-card-title">Bad Email Date Header</div>
-          <div class="error-card-desc">Unparseable <code>Date</code> header → silently skipped. Scan continues to the next message.</div>
+        <div class="err-card" style="border-left:3px solid var(--blue);">
+          <div class="err-title">Bad Email Date Header</div>
+          <div class="err-desc">Unparseable <code>Date</code> header → silently skipped. Scan continues to the next message.</div>
         </div>
-        <div class="error-card" style="border-left:3px solid #a78bfa;">
-          <div class="error-card-title">POP3 Quit Error</div>
-          <div class="error-card-desc">Close failure → warning logged. Connection cleared in <code>finally</code> — no resource leak.</div>
+        <div class="err-card" style="border-left:3px solid var(--purple);">
+          <div class="err-title">POP3 Quit Error</div>
+          <div class="err-desc">Close failure → warning logged. Connection cleared in <code>finally</code> — no resource leak.</div>
         </div>
-        <div class="error-card" style="border-left:3px solid #fbbf24;">
-          <div class="error-card-title">Partial Download</div>
-          <div class="error-card-desc">Returns <code>success=False</code> with partial <code>received_times</code> — failure alert accurately lists what arrived and what didn't.</div>
+        <div class="err-card" style="border-left:3px solid var(--yellow);">
+          <div class="err-title">Partial Download</div>
+          <div class="err-desc">Returns <code>success=False</code> with partial <code>received_times</code> — failure alert accurately lists what arrived and what didn't.</div>
         </div>
       </div>
     </div>
@@ -874,119 +1090,119 @@
   </div>
 </div>
 
-<!-- ══════════════════════════════════════════
+<!-- ══════════════════════════════════════
      PAGE 3 — CODE & HIGHLIGHTS
-══════════════════════════════════════════ -->
+══════════════════════════════════════ -->
 <div class="page" id="page-2">
   <div class="page-inner">
 
     <!-- Code Highlights -->
-    <div class="dk-section">
-      <p class="dk-label">// code_highlights · main.example.py</p>
-      <div class="code-split">
+    <div class="sec">
+      <p class="sec-label">// code_highlights · main.example.py</p>
+      <div class="code-grid">
 
         <div class="code-card">
-          <div class="code-card-header">
+          <div class="code-card-hdr">
             <span class="code-card-title">In-Place Address Column Expansion</span>
-            <span class="code-tag after">provider_d_report()</span>
+            <span class="code-tag">provider_d_report()</span>
           </div>
-          <pre><span class="hl-comment"># Split one address string into 5 structured fields</span>
-<span class="hl-comment"># and splice them back at the original column position</span>
-d_col = col_dict[<span class="hl-string">"D"</span>]
+          <pre><span class="cm"># Split one address string into 5 structured fields</span>
+<span class="cm"># and splice them back at the original column position</span>
+d_col = col_dict[<span class="st">"D"</span>]
 split_df = (
-    df[d_col].str.split(<span class="hl-string">","</span>, expand=<span class="hl-keyword">True</span>)
-             .apply(<span class="hl-keyword">lambda</span> x: x.str.strip())
+    df[d_col].str.split(<span class="st">","</span>, expand=<span class="kw">True</span>)
+             .apply(<span class="kw">lambda</span> x: x.str.strip())
 )
 split_df.columns = [
-    <span class="hl-string">"ConsigneeAddress"</span>, <span class="hl-string">"City"</span>,
-    <span class="hl-string">"State"</span>, <span class="hl-string">"Country"</span>, <span class="hl-string">"Zip"</span>
+    <span class="st">"ConsigneeAddress"</span>, <span class="st">"City"</span>,
+    <span class="st">"State"</span>, <span class="st">"Country"</span>, <span class="st">"Zip"</span>
 ]
 d_idx = list(df.columns).index(d_col)
-df.drop(columns=[d_col], inplace=<span class="hl-keyword">True</span>)
-<span class="hl-keyword">for</span> i, col <span class="hl-keyword">in</span> enumerate(split_df.columns):
+df.drop(columns=[d_col], inplace=<span class="kw">True</span>)
+<span class="kw">for</span> i, col <span class="kw">in</span> enumerate(split_df.columns):
     df.insert(d_idx + i, col, split_df[col])
 
-<span class="hl-comment"># Null-fill keeps pivot clean — no (Blank) label rows</span>
-df[col_dict[<span class="hl-string">"K"</span>]] = df[col_dict[<span class="hl-string">"K"</span>]].fillna(
-    <span class="hl-string">"SHIPMENT EN-ROUTE-TO-DEST"</span>
+<span class="cm"># Null-fill keeps pivot clean — no (Blank) label rows</span>
+df[col_dict[<span class="st">"K"</span>]] = df[col_dict[<span class="st">"K"</span>]].fillna(
+    <span class="st">"SHIPMENT EN-ROUTE-TO-DEST"</span>
 )</pre>
         </div>
 
         <div class="code-card">
-          <div class="code-card-header">
+          <div class="code-card-hdr">
             <span class="code-card-title">Fault-Tolerant Source Dispatch Table</span>
-            <span class="code-tag after">combine_excel()</span>
+            <span class="code-tag">combine_excel()</span>
           </div>
-          <pre><span class="hl-comment"># Each source is isolated — one failure never blocks others</span>
+          <pre><span class="cm"># Each source is isolated — one failure never blocks others</span>
 dfs = []
-<span class="hl-keyword">for</span> label, loader <span class="hl-keyword">in</span> [
-    (<span class="hl-string">"Provider A"</span>, <span class="hl-keyword">lambda</span>: pd.read_excel(
-        find_file(<span class="hl-string">"Provider A*.xlsx"</span>))),
-    (<span class="hl-string">"Provider B"</span>, <span class="hl-keyword">lambda</span>: pd.read_excel(
-        find_file(<span class="hl-string">"Provider B*.xlsx"</span>)).iloc[:, <span class="hl-num">0</span>:<span class="hl-num">19</span>]),
-    (<span class="hl-string">"Provider C"</span>, provider_c_report),
-    (<span class="hl-string">"Provider D"</span>, provider_d_report),
-    (<span class="hl-string">"Provider E"</span>, <span class="hl-keyword">lambda</span>: pd.read_excel(
-        find_file(<span class="hl-string">"Provider E*.xlsx"</span>)).iloc[:, <span class="hl-num">0</span>:<span class="hl-num">19</span>]),
+<span class="kw">for</span> label, loader <span class="kw">in</span> [
+    (<span class="st">"Provider A"</span>, <span class="kw">lambda</span>: pd.read_excel(
+        find_file(<span class="st">"Provider A*.xlsx"</span>))),
+    (<span class="st">"Provider B"</span>, <span class="kw">lambda</span>: pd.read_excel(
+        find_file(<span class="st">"Provider B*.xlsx"</span>)).iloc[:, <span class="nm">0</span>:<span class="nm">19</span>]),
+    (<span class="st">"Provider C"</span>, provider_c_report),
+    (<span class="st">"Provider D"</span>, provider_d_report),
+    (<span class="st">"Provider E"</span>, <span class="kw">lambda</span>: pd.read_excel(
+        find_file(<span class="st">"Provider E*.xlsx"</span>)).iloc[:, <span class="nm">0</span>:<span class="nm">19</span>]),
 ]:
-    <span class="hl-keyword">try</span>:
+    <span class="kw">try</span>:
         df = loader()
-        df.columns = template_cols[:<span class="hl-keyword">len</span>(df.columns)]
+        df.columns = template_cols[:<span class="kw">len</span>(df.columns)]
         dfs.append(df)
-    <span class="hl-keyword">except</span> FileNotFoundError:
-        print(<span class="hl-string">f"[SKIP] </span><span class="hl-var">{label}</span><span class="hl-string"> not found"</span>)
+    <span class="kw">except</span> FileNotFoundError:
+        print(<span class="st">f"[SKIP] </span><span class="vr">{label}</span><span class="st"> not found"</span>)
 
-<span class="hl-keyword">if not</span> dfs:
-    <span class="hl-keyword">raise</span> RuntimeError(<span class="hl-string">"No files available"</span>)
-df_result = pd.concat(dfs, ignore_index=<span class="hl-keyword">True</span>)</pre>
+<span class="kw">if not</span> dfs:
+    <span class="kw">raise</span> RuntimeError(<span class="st">"No files available"</span>)
+df_result = pd.concat(dfs, ignore_index=<span class="kw">True</span>)</pre>
         </div>
 
         <div class="code-card">
-          <div class="code-card-header">
+          <div class="code-card-hdr">
             <span class="code-card-title">Position-Safe Column Block Reorder</span>
-            <span class="code-tag after">provider_c_report()</span>
+            <span class="code-tag">provider_c_report()</span>
           </div>
-          <pre><span class="hl-comment"># col_dict rebuilt after every mutation —</span>
-<span class="hl-comment"># letter keys stay stable regardless of insert/drop order</span>
+          <pre><span class="cm"># col_dict rebuilt after every mutation —</span>
+<span class="cm"># letter keys stay stable regardless of insert/drop order</span>
 col_dict = {
-    get_column_letter(i + <span class="hl-num">1</span>): col
-    <span class="hl-keyword">for</span> i, col <span class="hl-keyword">in</span> enumerate(df.columns)
+    get_column_letter(i + <span class="nm">1</span>): col
+    <span class="kw">for</span> i, col <span class="kw">in</span> enumerate(df.columns)
 }
-<span class="hl-comment"># Extract block, drop, re-insert at target position</span>
+<span class="cm"># Extract block, drop, re-insert at target position</span>
 block = df.loc[
-    :, col_dict[<span class="hl-string">"I"</span>]:col_dict[<span class="hl-string">"N"</span>]
+    :, col_dict[<span class="st">"I"</span>]:col_dict[<span class="st">"N"</span>]
 ].copy()
-df.drop(columns=block.columns.tolist(), inplace=<span class="hl-keyword">True</span>)
+df.drop(columns=block.columns.tolist(), inplace=<span class="kw">True</span>)
 col_dict = {
-    get_column_letter(i + <span class="hl-num">1</span>): col
-    <span class="hl-keyword">for</span> i, col <span class="hl-keyword">in</span> enumerate(df.columns)
+    get_column_letter(i + <span class="nm">1</span>): col
+    <span class="kw">for</span> i, col <span class="kw">in</span> enumerate(df.columns)
 }
-c_idx = list(df.columns).index(col_dict[<span class="hl-string">"C"</span>])
-<span class="hl-keyword">for</span> i, col <span class="hl-keyword">in</span> enumerate(block.columns):
+c_idx = list(df.columns).index(col_dict[<span class="st">"C"</span>])
+<span class="kw">for</span> i, col <span class="kw">in</span> enumerate(block.columns):
     df.insert(c_idx + i, col, block[col].values)</pre>
         </div>
 
         <div class="code-card">
-          <div class="code-card-header">
+          <div class="code-card-hdr">
             <span class="code-card-title">Stateless Update Detection via Filename Timestamp</span>
-            <span class="code-tag after">__main__</span>
+            <span class="code-tag">__main__</span>
           </div>
-          <pre><span class="hl-comment"># Files saved as name_HHMM.ext at download time.</span>
-<span class="hl-comment"># Each run checks only files newer than its threshold</span>
-<span class="hl-comment"># — no lock files, no external state required.</span>
-mode = sys.argv[<span class="hl-num">1</span>] <span class="hl-keyword">if</span> len(sys.argv) > <span class="hl-num">1</span> <span class="hl-keyword">else</span> <span class="hl-string">"initial"</span>
+          <pre><span class="cm"># Files saved as name_HHMM.ext at download time.</span>
+<span class="cm"># Each run checks only files newer than its threshold</span>
+<span class="cm"># — no lock files, no external state required.</span>
+mode = sys.argv[<span class="nm">1</span>] <span class="kw">if</span> len(sys.argv) > <span class="nm">1</span> <span class="kw">else</span> <span class="st">"initial"</span>
 
-has_after_1700 = <span class="hl-keyword">any</span>(
-    int(Path(f).stem.rsplit(<span class="hl-string">'_'</span>, <span class="hl-num">1</span>)[<span class="hl-num">-1</span>]) >= <span class="hl-num">1700</span>
-    <span class="hl-keyword">for</span> f <span class="hl-keyword">in</span> result.downloaded_files
+has_after_1700 = <span class="kw">any</span>(
+    int(Path(f).stem.rsplit(<span class="st">'_'</span>, <span class="nm">1</span>)[<span class="nm">-1</span>]) >= <span class="nm">1700</span>
+    <span class="kw">for</span> f <span class="kw">in</span> result.downloaded_files
 )
-<span class="hl-keyword">if not</span> xlsb.exists():
-    send_report(..., is_updated=<span class="hl-keyword">False</span>)
-<span class="hl-keyword">elif</span> mode == <span class="hl-string">"second"</span> <span class="hl-keyword">and</span> has_after_1700:
-    send_report(..., is_updated=<span class="hl-keyword">True</span>)
-<span class="hl-keyword">elif</span> mode == <span class="hl-string">"third"</span> <span class="hl-keyword">and</span> has_after_1800:
-    send_report(..., is_updated=<span class="hl-keyword">True</span>)
-<span class="hl-keyword">else</span>:
+<span class="kw">if not</span> xlsb.exists():
+    send_report(..., is_updated=<span class="kw">False</span>)
+<span class="kw">elif</span> mode == <span class="st">"second"</span> <span class="kw">and</span> has_after_1700:
+    send_report(..., is_updated=<span class="kw">True</span>)
+<span class="kw">elif</span> mode == <span class="st">"third"</span> <span class="kw">and</span> has_after_1800:
+    send_report(..., is_updated=<span class="kw">True</span>)
+<span class="kw">else</span>:
     send_skip(...)</pre>
         </div>
 
@@ -994,16 +1210,16 @@ has_after_1700 = <span class="hl-keyword">any</span>(
     </div>
 
     <!-- Dev Process -->
-    <div class="dk-section">
-      <p class="dk-label">// dev_process · Claude Code Conversations</p>
+    <div class="sec">
+      <p class="sec-label">// dev_process · Claude Code Conversations</p>
       <div class="convo-grid">
 
         <div class="convo-card">
-          <div class="convo-header">Multi-Run Idempotency — Logic First</div>
+          <div class="convo-hdr">Multi-Run Idempotency — Logic First</div>
           <div class="convo-body">
             <div class="msg">
-              <div class="msg-avatar user">TJ</div>
-              <div class="msg-bubble">
+              <div class="avatar avatar-u">TJ</div>
+              <div class="bubble">
                 Extending to 3 daily runs. Each file is already saved with a <code>_HHMM</code> suffix at download time —
                 I want to use that as the update signal instead of adding any new state.
                 The first run gate is <code>xlsb.exists()</code>. For runs 2 and 3,
@@ -1012,8 +1228,8 @@ has_after_1700 = <span class="hl-keyword">any</span>(
               </div>
             </div>
             <div class="msg">
-              <div class="msg-avatar claude">C</div>
-              <div class="msg-bubble claude-bubble">
+              <div class="avatar avatar-c">C</div>
+              <div class="bubble bubble-c">
                 All 6 cases verified — no overlap. Implemented <code>sys.argv</code> mode dispatch
                 (<code>initial / second / third</code>) with thresholds <code>&#x2265;1700</code> / <code>&#x2265;1800</code>.
                 Created <code>run_initial.bat</code>, <code>run_second.bat</code>, <code>run_third.bat</code>.
@@ -1023,37 +1239,37 @@ has_after_1700 = <span class="hl-keyword">any</span>(
         </div>
 
         <div class="convo-card">
-          <div class="convo-header">Change Impact Analysis Before Edit</div>
+          <div class="convo-hdr">Change Impact Analysis Before Edit</div>
           <div class="convo-body">
             <div class="msg">
-              <div class="msg-avatar user">TJ</div>
-              <div class="msg-bubble">
+              <div class="avatar avatar-u">TJ</div>
+              <div class="bubble">
                 The <code>name</code> field in <code>EMAIL_TARGETS</code> — I know it renders in the email body,
                 but does it get used anywhere else? Matching logic uses <code>contains</code> and <code>sender</code>,
                 so I'm assuming it's safe to rename. Confirm before I change it.
               </div>
             </div>
             <div class="msg">
-              <div class="msg-avatar claude">C</div>
-              <div class="msg-bubble claude-bubble">
+              <div class="avatar avatar-c">C</div>
+              <div class="bubble bubble-c">
                 Also used in log output and as the <code>received_times</code> dict key —
                 but since both writer and reader pull from the same config, renaming is safe.
                 Matching is unaffected.
               </div>
             </div>
             <div class="msg">
-              <div class="msg-avatar user">TJ</div>
-              <div class="msg-bubble">Good. Apply carrier prefixes: CA / CB / CC / CD.</div>
+              <div class="avatar avatar-u">TJ</div>
+              <div class="bubble">Good. Apply carrier prefixes: CA / CB / CC / CD.</div>
             </div>
           </div>
         </div>
 
         <div class="convo-card">
-          <div class="convo-header">Partial Failure Handling — Decoupled Paths</div>
+          <div class="convo-hdr">Partial Failure Handling — Decoupled Paths</div>
           <div class="convo-body">
             <div class="msg">
-              <div class="msg-avatar user">TJ</div>
-              <div class="msg-bubble">
+              <div class="avatar avatar-u">TJ</div>
+              <div class="bubble">
                 Not all 5 files arrive every day. The consolidation, report send,
                 and failure alert need to be fully decoupled — a missing file shouldn't
                 block the report, and a send failure shouldn't suppress the alert.
@@ -1061,8 +1277,8 @@ has_after_1700 = <span class="hl-keyword">any</span>(
               </div>
             </div>
             <div class="msg">
-              <div class="msg-avatar claude">C</div>
-              <div class="msg-bubble claude-bubble">
+              <div class="avatar avatar-c">C</div>
+              <div class="bubble bubble-c">
                 Each loader isolated in <code>try/except FileNotFoundError</code> inside a dispatch table.
                 Alert and report are independent branches — neither blocks the other.
                 <code>RuntimeError</code> raised only when <code>dfs</code> is empty.
@@ -1072,19 +1288,19 @@ has_after_1700 = <span class="hl-keyword">any</span>(
         </div>
 
         <div class="convo-card">
-          <div class="convo-header">Module Split — API Contract Preserved</div>
+          <div class="convo-hdr">Module Split — API Contract Preserved</div>
           <div class="convo-body">
             <div class="msg">
-              <div class="msg-avatar user">TJ</div>
-              <div class="msg-bubble">
+              <div class="avatar avatar-u">TJ</div>
+              <div class="bubble">
                 Split the email pipeline into <code>email_setup</code>, <code>downloader</code>, <code>sender</code>.
                 Public function signatures and return types must stay identical —
                 <code>main.py</code> should only need import line changes, nothing else.
               </div>
             </div>
             <div class="msg">
-              <div class="msg-avatar claude">C</div>
-              <div class="msg-bubble claude-bubble">
+              <div class="avatar avatar-c">C</div>
+              <div class="bubble bubble-c">
                 Done. All signatures and return types preserved.
                 <code>main.py</code> diff is 3 import lines — zero logic changes.
               </div>
@@ -1103,10 +1319,190 @@ has_after_1700 = <span class="hl-keyword">any</span>(
 </footer>
 
 <script>
-  function switchTab(index) {
-    document.querySelectorAll('.tab').forEach((t, i) => t.classList.toggle('active', i === index));
-    document.querySelectorAll('.page').forEach((p, i) => p.classList.toggle('active', i === index));
+  /* ══ TYPING ANIMATION ══ */
+
+  // --- Code cards: visible by default, click → clear → type back ---
+  function initCodeCard(card) {
+    const pre = card.querySelector('pre');
+    if (!pre || card._typingInit) return;
+    card._typingInit = true;
+
+    // Snapshot colors from syntax-highlight spans before wrapping
+    pre.querySelectorAll('span[class]').forEach(s => {
+      s.dataset.color = getComputedStyle(s).color;
+    });
+
+    // Wrap every character in a .char span, preserving inherited color
+    function wrapChars(node) {
+      if (node.nodeType === Node.TEXT_NODE) {
+        const frag = document.createDocumentFragment();
+        for (const ch of node.textContent) {
+          const s = document.createElement('span');
+          s.className = 'char';
+          s.textContent = ch;
+          frag.appendChild(s);
+        }
+        node.replaceWith(frag);
+      } else if (node.nodeType === Node.ELEMENT_NODE) {
+        Array.from(node.childNodes).forEach(wrapChars);
+        // propagate snapshotted color down to child chars
+        if (node.dataset.color) {
+          node.querySelectorAll('.char:not([data-color])').forEach(c => {
+            c.dataset.color = node.dataset.color;
+          });
+        }
+      }
+    }
+    Array.from(pre.childNodes).forEach(wrapChars);
+
+    // fallback color for chars without explicit color
+    pre.querySelectorAll('.char:not([data-color])').forEach(c => {
+      c.dataset.color = '#e6edf3';
+    });
+
+    // cursor
+    const cursor = document.createElement('span');
+    cursor.className = 'type-cursor';
+    cursor.style.display = 'none';
+    pre.appendChild(cursor);
+
+    card._chars  = Array.from(pre.querySelectorAll('.char'));
+    card._cursor = cursor;
+    card._typing = false;
+
   }
+
+  function replayCode(card) {
+    if (card._typing) return;
+    card._typing = true;
+    card._cursor.style.display = 'inline-block';
+
+    card._chars.forEach(c => { c.style.color = 'transparent'; });
+
+    const SPEED = 10;
+    const batch = Math.max(1, Math.floor(card._chars.length / 280));
+    let i = 0;
+    function tick() {
+      if (i >= card._chars.length) {
+        card._cursor.style.display = 'none';
+        card._typing = false;
+        return;
+      }
+      for (let b = 0; b < batch && i < card._chars.length; b++, i++) {
+        card._chars[i].style.color = card._chars[i].dataset.color;
+      }
+      setTimeout(tick, SPEED);
+    }
+    setTimeout(tick, 80);
+  }
+
+  // --- Convo cards: visible by default, scroll into view → hide bubbles → reveal one by one ---
+  function initConvoCard(card) {
+    if (card._typingInit) return;
+    card._typingInit = true;
+    card._msgs   = Array.from(card.querySelectorAll('.msg'));
+    card._typing = false;
+  }
+
+  function replayConvo(card) {
+    if (card._typing) return;
+    card._typing = true;
+    card._msgs.forEach(m => m.classList.remove('visible'));
+    card._msgs.forEach((m, i) => {
+      setTimeout(() => {
+        m.classList.add('visible');
+        if (i === card._msgs.length - 1) card._typing = false;
+      }, 150 + i * 480);
+    });
+  }
+
+  // Initialize page-2 cards and attach Intersection Observer
+  let page2Inited = false;
+  function initPage2() {
+    if (page2Inited) return;
+    page2Inited = true;
+
+    document.querySelectorAll('.code-card').forEach(initCodeCard);
+    document.querySelectorAll('.convo-card .msg').forEach(m => m.classList.add('visible'));
+    document.querySelectorAll('.convo-card').forEach(initConvoCard);
+
+    const observer = new IntersectionObserver((entries) => {
+      entries.forEach(entry => {
+        if (!entry.isIntersecting) return;
+        const el = entry.target;
+        observer.unobserve(el); // fire once per card
+        if (el.classList.contains('code-card'))  replayCode(el);
+        if (el.classList.contains('convo-card')) replayConvo(el);
+      });
+    }, { threshold: 0.35 }); // trigger when 35% of card is visible
+
+    document.querySelectorAll('.code-card, .convo-card').forEach(c => observer.observe(c));
+  }
+
+  function switchTab(i) {
+    document.querySelectorAll('.tab').forEach((t, j) => t.classList.toggle('active', j === i));
+    document.querySelectorAll('.page').forEach((p, j) => p.classList.toggle('active', j === i));
+    window.scrollTo({ top: 0, behavior: 'instant' });
+    if (i === 2) initPage2();
+
+    // Re-trigger fade-up animations on tab content
+    document.querySelectorAll('.page.active .anim-fade-up, .page.active .anim-fade-in').forEach(el => {
+      el.style.animation = 'none';
+      el.offsetHeight;
+      el.style.animation = '';
+    });
+
+    // Trigger SVG draw-on animation when Pipeline Flow tab is shown
+    if (i === 1) {
+      const edges = document.querySelectorAll('#fc-svg .fc-edge.animated');
+      edges.forEach(el => el.classList.remove('run'));
+      // force reflow then stagger each path
+      requestAnimationFrame(() => {
+        edges.forEach((el, idx) => {
+          const len = el.getTotalLength ? el.getTotalLength() : 100;
+          el.style.setProperty('--len', len);
+          el.style.strokeDasharray  = len;
+          el.style.strokeDashoffset = len;
+          setTimeout(() => el.classList.add('run'), idx * 80);
+        });
+      });
+    }
+  }
+
+  // Auto-run draw animation for any edges already on the active tab on load
+  window.addEventListener('DOMContentLoaded', () => {
+    const edges = document.querySelectorAll('#fc-svg .fc-edge');
+    edges.forEach(el => {
+      const len = el.getTotalLength ? el.getTotalLength() : 80;
+      el.style.setProperty('--len', len);
+    });
+
+    // Click/touch toggle zoom — origin follows pointer/touch position
+    const container = document.querySelector('.fc-svg-container');
+    const hint = document.querySelector('.fc-zoom-hint');
+
+    function getOrigin(e) {
+      const rect = container.getBoundingClientRect();
+      const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+      const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+      const xPct = ((clientX - rect.left) / rect.width  * 100).toFixed(1) + '%';
+      const yPct = ((clientY - rect.top)  / rect.height * 100).toFixed(1) + '%';
+      return `${xPct} ${yPct}`;
+    }
+
+    function toggleZoom(e) {
+      e.preventDefault();
+      const zooming = !container.classList.contains('zoomed');
+      if (zooming) container.style.transformOrigin = getOrigin(e);
+      container.classList.toggle('zoomed', zooming);
+      if (hint) hint.textContent = zooming ? 'click to zoom out' : 'click to zoom in';
+    }
+
+    if (container) {
+      container.addEventListener('click', toggleZoom);
+      container.addEventListener('touchstart', toggleZoom, { passive: false });
+    }
+  });
 </script>
 
 </body>
