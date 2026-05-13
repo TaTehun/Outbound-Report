@@ -457,6 +457,11 @@
     }
     .station-track-h { display: flex; align-items: center; gap: 0; width: 100%; background: var(--bg-card); border: 1px solid var(--border); padding: 24px 28px; }
     .station-h { display: flex; flex-direction: column; align-items: center; gap: 8px; min-width: 120px; position: relative; flex-shrink: 0; }
+    @media (max-width: 600px) {
+      .station-track-h { flex-wrap: wrap; padding: 16px 12px; row-gap: 20px; }
+      .station-h { min-width: calc(50% - 8px); flex-shrink: 0; gap: 6px; }
+      .station-h-rail { display: none; }
+    }
     .station-h-dot { width: 36px; height: 36px; border-radius: 50%; border: 2px solid var(--border); background: var(--bg-deep); display: flex; align-items: center; justify-content: center; position: relative; z-index: 1; }
     .station-h-dot-inner { width: 10px; height: 10px; border-radius: 50%; background: var(--border); }
     .station-h.done .station-h-dot   { border-color: rgba(96,165,250,.6); background: rgba(96,165,250,.08); }
