@@ -741,8 +741,10 @@
     /* ── Responsive ── */
     @media (max-width: 768px) {
       /* header */
-      .hdr { padding: 0 20px; min-height: 60px; }
+      .hdr { padding: 0 20px; flex-wrap: wrap; align-content: center; gap: 6px; }
       .hdr-prompt { display: none; }
+      .hdr-right { flex-wrap: wrap; gap: 4px; }
+      .hdr-pill { font-size: 0.6rem; padding: 3px 8px; }
       .hdr-title { font-size: 0.95rem; }
       .hdr-sub { font-size: 0.62rem; }
       .hdr-pill { font-size: 0.62rem; padding: 4px 9px; }
@@ -1495,6 +1497,14 @@ has_after_1700 = <span class="kw">any</span>(
 
     document.querySelectorAll('.code-card, .convo-card').forEach(c => observer.observe(c));
   }
+
+  function syncTabsTop() {
+    const hdr = document.querySelector('.hdr');
+    const tabs = document.querySelector('.tabs-wrap');
+    if (hdr && tabs) tabs.style.top = hdr.offsetHeight + 'px';
+  }
+  syncTabsTop();
+  window.addEventListener('resize', syncTabsTop);
 
   function switchTab(i) {
     document.querySelectorAll('.tab').forEach((t, j) => t.classList.toggle('active', j === i));
